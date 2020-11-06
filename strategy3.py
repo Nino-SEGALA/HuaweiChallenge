@@ -35,15 +35,15 @@ class Strat3(Strategy):
 
         # For representing directions with indices
         self.directions = ['up', 'right', 'down', 'left']
-        # Initialization of the known map
-        self.board_map = self.initMap()
         # Values of the different object in the board_map
         self.map_values = {"home_base": -10, "wall": -5, "coin": -1, "robot": -15, "free_square": 0}  # other value?
         # "home_base": 0 because we are at distance 0 of the home_base?
         # Depth of simulation for the best move
-        self.depth = 5
+        self.depth = 4
         # Values for the best move todo: find the best hyperparameters
         self.hyperparameters = {"alpha": 1, "beta": 100, "gamma": -30, "delta": 1.2, "epsilon": 1.5, "zeta": -30}
+        # Initialization of the known map
+        self.board_map = self.initMap()
 
     def step(self, observation):
         ''' Called every time an observation has been received
@@ -66,9 +66,12 @@ class Strat3(Strategy):
 
         # Loop over robots / Actualization of the board_map
         for robot_id in range(self.num_robots):
+            # Get robot specific observation
+            robot = observation.robot(robot_id)
+            self.print('Robot {}:'.format(robot_id))
             for direction in self.directions:
                 radar = observation.radar(robot_id, direction)  # get radar
-                self.actualizeMap(self, robot_id, direction, radar)  # we actualize the board_map
+                self.actualizeMap(robot, direction, radar)  # we actualize the board_map
 
         # Loop over robots / Choose action
         for robot_id in range(self.num_robots):
@@ -87,7 +90,11 @@ class Strat3(Strategy):
                 action.recharge(robot_id)  # recharge
 
             ### Choice of the best action
+            self.print("bestMove evaluation")
             move = self.bestMove(observation, robot)  # we get the best move
+            self.print(move)
+            action.move(robot_id, move)  # set move action
+            action.detect(robot_id)  # we detect what we see
 
         return action
 
@@ -96,10 +103,10 @@ class Strat3(Strategy):
         board_map = np.full(self.shape, np.inf)  # what is unknown is set to infinity
 
         ### side walls
-        board_map[0:self.shape[0]][0] = self.map_values["wall"]  # left walls
-        board_map[0:self.shape[0]][self.shape[1]] = self.map_values["wall"]  # right walls
-        board_map[0][0:self.shape[1]] = self.map_values["wall"]  # up walls
-        board_map[self.shape[0]][0:self.shape[1]] = self.map_values["wall"]  # bottom walls
+        board_map[0:self.shape[0], 0] = self.map_values["wall"]  # left walls
+        board_map[0:self.shape[0], self.shape[1]-1] = self.map_values["wall"]  # right walls
+        board_map[0, 0:self.shape[1]] = self.map_values["wall"]  # up walls
+        board_map[self.shape[0]-1, 0:self.shape[1]-1] = self.map_values["wall"]  # bottom walls
 
         ### the home-bases
         # up home_base
@@ -111,14 +118,14 @@ class Strat3(Strategy):
         board_map[self.shape[0] - 2][2] = self.map_values["home_base"]
         board_map[self.shape[0] - 3][1] = self.map_values["home_base"]
 
-        ### robots positions and home_bases
+        """### robots positions
         for robot_id in range(self.num_robots):
             robot_x, robot_y = tuple(robot_id.position)  # we get the position of the robot
             symmetric_x = self.symmetric((robot_x, robot_y))[0]  # the symmetric point (symmetric_x, robot_y)
 
             # the robot position
             board_map[robot_x][robot_y] = self.map_values["free_square"]  # where the robot is located is a free square
-            board_map[symmetric_x][robot_y] = self.map_values["free_square"]  # the symmetric position also
+            board_map[symmetric_x][robot_y] = self.map_values["free_square"]  # the symmetric position also"""
 
         return board_map
 
@@ -127,12 +134,12 @@ class Strat3(Strategy):
         return self.shape[0] - position[0] - 1, position[1]
 
     # Actualization of the board_map after the use of the radar
-    def actualizeMap(self, robot_id, direction, radar):
-        robot_x, robot_y = tuple(robot_id.position)  # we get the position of the robot
+    def actualizeMap(self, robot, direction, radar):
+        robot_x, robot_y = tuple(robot.position)  # we get the position of the robot
         dir_x, dir_y = self.dir2coord(direction)  # we get the direction (as a tuple)
 
         # we actualize the board_map with the value of the free_squares
-        for i in range(1, radar.distance):
+        for i in range(radar.distance):
             x = robot_x + i * dir_x
             y = robot_y + i * dir_y
             sym_x, y = self.symmetric((x, y))  # the symmetric position
@@ -146,8 +153,9 @@ class Strat3(Strategy):
         obj = radar.object
         if obj == "robot":  # if we detected a robot it means there is a free_square at this place
             obj = "free_square"
-        self.board_map[x][y] = self.map_values[obj]
-        self.board_map[sym_x][y] = self.map_values[obj]
+        if obj != None:  # problem with radar.object (how to get the results of the action detect?)
+            self.board_map[x][y] = self.map_values[obj]
+            self.board_map[sym_x][y] = self.map_values[obj]
 
     # Calculate the distance to the home-base of every point of the board_map
     def distanceMap(self):
@@ -213,41 +221,51 @@ class Strat3(Strategy):
     # Find the best move for one robot
     def bestMove(self, observation, robot):
         position = tuple(robot.position)
-        bestMove = self.bestMoveRec(observation, tuple(robot.position), robot.energy, robot.has_item(), self.depth)
+        bestMove, value = self.bestMoveRec(observation, position, robot.energy, robot.has_item, self.depth)
         if bestMove == "":  # if no move lead to a finite value in bestMoveRec
             # choose random direction to move
+            self.print("random move chosen")
             bestMove = np.random.choice(list(self.directions))
         return bestMove
 
+    # Recursive function to find the best move
     def bestMoveRec(self, observation, position, energy, have_coin, depth):
         # Leaf / we evaluate the board
         if depth == 0:
             x, y = position
             distance_home_base = self.board_map[x][y]
             distance_coin, (coin_x, coin_y) = self.distanceCoin(position)
+
+            # if there is no coin
+            delta = -1
+            if distance_coin != None:
+                delta = 1/distance_coin * (self.board_map[coin_x][coin_y] < energy - distance_coin)
+
+            # the heuristic function
             value = self.hyperparameters["alpha"] * self.knowMap() \
                     + self.hyperparameters["beta"] * observation.score \
                     + self.hyperparameters["gamma"] * observation.opponent_score \
-                    + self.hyperparameters["delta"] * (1 - have_coin) * distance_coin * \
-                        (self.board_map[coin_x][coin_y] < energy - distance_coin) \
+                    + self.hyperparameters["delta"] * (1 - have_coin) * delta \
                     + self.hyperparameters["epsilon"] * have_coin * distance_home_base \
                     + self.hyperparameters["zeta"] * (distance_home_base > energy)
-            return value
+            return "", value
         else:
             bestMove = ""
             maxValue = -np.inf
             for move in self.directions:
-                (x, y) = position + self.dir2coord(move)  # new position
+                (x, y) = tuple(np.array(position) + np.array(self.dir2coord(move)))  # new position
                 if self.board_map[x][y] == self.map_values["coin"]:  # if we collect a coin
                     have_coin = True
                 # we only go to known free_squares
                 if self.board_map[x][y] < 0 and not (self.board_map[x][y] == self.map_values["home_base"]) \
                         or self.board_map[x][y] == np.inf:
-                    return -np.inf
-                value = self.bestMoveRec((x, y), energy - 1 - have_coin, have_coin, depth - 1)  # recursive call
+                    return "", -np.inf
+                # recursive call
+                bstMv, value = self.bestMoveRec(observation, (x, y), energy - 1 - have_coin, have_coin, depth - 1)
                 if value > maxValue:
                     bestMove = move
-        return bestMove
+                    maxValue = value
+        return bestMove, value
 
     # Return the proportion of the board_map that we know
     def knowMap(self):
@@ -255,7 +273,7 @@ class Strat3(Strategy):
         prop = 0
         for x in range(1, n - 1):  # we don't look at the borders
             for y in range(1, p - 1):  # we don't look at the borders
-                if self.board_map != np.inf:  # if we know what is in the position (x, y)
+                if self.board_map[x][y] != np.inf:  # if we know what is in the position (x, y)
                     prop += 1
         return prop / (n - 2 * p - 2)  # the dimensions of the board_map without the borders
 
@@ -275,6 +293,8 @@ class Strat3(Strategy):
 
         # searching for the nearest coin
         while distance == -1:
+            if len(squares) == 0:
+                return None, (-1, -1)
             x, y = squares.pop(0)  # BFS
             dist = dist_map[x][y]
             # if there is a coin
