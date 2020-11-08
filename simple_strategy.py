@@ -36,13 +36,13 @@ class Simple(Strategy):
                 'priority_path' : [], # If robot has to go to a coin or come back to home base, we call get_path()
                 'priority_path_index': None
             }
-
+        
         for i in range(self.shape[0]):
             new_row = []
             for j in range(self.shape[1]):
                 new_row.append('X')
             self.map.append(new_row)
-
+        
 
     def step(self, observation):
         action = self.action()
@@ -67,7 +67,8 @@ class Simple(Strategy):
             #     self.print(robot.position)
             #     self.robot_state[robot_id]['directions_scanned'] = 'sdfdsf'
             #     self.get_path((robot.position), (4, 6))
-
+        
+        self.print(self.map)
         return action
 
     def scan(self, robot_id, observation, direction):
@@ -104,8 +105,8 @@ class Simple(Strategy):
                     self.map[i][robot.position[1]] = 'O'
                 
     
-        self.print_map()
-        self.print()
+        # 
+        # self.print()
 
     def print_map(self):
         for i in range(self.shape[0]):
