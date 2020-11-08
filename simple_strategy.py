@@ -17,7 +17,8 @@ class Simple(Strategy):
         self.object_map = {
             'wall': 'W',
             'coin': 'C',
-            'home_base': 'H'
+            'home_base': 'H',
+            'robot': 'R'
         }
         self.map = []
 
@@ -50,8 +51,6 @@ class Simple(Strategy):
     def step(self, observation):
         action = self.action()
 
-        
-
         # Loop over robots
         for robot_id in range(self.num_robots):
             if self.robot_state[robot_id]['flag'] == 0:
@@ -62,11 +61,11 @@ class Simple(Strategy):
                     self.scan(robot_id, observation, 'right')
                     self.robot_state[robot_id]['directions_scanned'] = 'right'
 
-                # elif self.robot_state[robot_id]['directions_scanned'] == 'right':
-                #     self.scan(robot_id, observation, 'down')
-                #     self.robot_state[robot_id]['directions_scanned'] = 'down'
-
                 elif self.robot_state[robot_id]['directions_scanned'] == 'right':
+                    self.scan(robot_id, observation, 'down')
+                    self.robot_state[robot_id]['directions_scanned'] = 'down'
+
+                elif self.robot_state[robot_id]['directions_scanned'] == 'down':
                     self.scan(robot_id, observation, 'left')
                     self.robot_state[robot_id]['directions_scanned'] = 'left'
 
@@ -97,8 +96,6 @@ class Simple(Strategy):
         elif direction == 'down':
             bottom_y = robot.position[1] + obj.distance
 
-        # self.print(left_x, obj)
-
         if obj.object:
             if right_x is not None:
                 self.map[robot.position[1]][right_x] = self.object_map[obj.object]
@@ -113,6 +110,7 @@ class Simple(Strategy):
                 for i in range(robot.position[1], top_y, -1):
                     self.map[i][robot.position[0]] = 'O'
             if bottom_y is not None:
+                self.print('ROBOT', robot.position[0])
                 self.map[bottom_y][robot.position[0]] = self.object_map[obj.object]
                 for i in range(robot.position[1], bottom_y):
                     self.map[i][robot.position[0]] = 'O'
