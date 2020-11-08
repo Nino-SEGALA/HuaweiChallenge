@@ -21,6 +21,8 @@ class Simple(Strategy):
         }
         self.map = []
 
+        self.flag = 0
+
         self.robot_state = {}
         self.print('num_robots: {}'.format(self.num_robots))
         self.print('shape: {}'.format(self.shape))
@@ -34,7 +36,8 @@ class Simple(Strategy):
                 'using_radar': False,
                 'directions_scanned': None,
                 'priority_path' : [], # If robot has to go to a coin or come back to home base, we call get_path()
-                'priority_path_index': None
+                'priority_path_index': None,
+                'flag': 0
             }
 
         for i in range(self.shape[0]):
@@ -47,26 +50,35 @@ class Simple(Strategy):
     def step(self, observation):
         action = self.action()
 
+        
+
         # Loop over robots
         for robot_id in range(self.num_robots):
-            action.detect(robot_id)
-            if not self.robot_state[robot_id]['directions_scanned']:
-                self.scan(robot_id, observation, 'right')
-                self.robot_state[robot_id]['directions_scanned'] = 'right'
-            elif self.robot_state[robot_id]['directions_scanned'] == 'right':
-                self.scan(robot_id, observation, 'down')
-                self.robot_state[robot_id]['directions_scanned'] = 'down'
-            elif self.robot_state[robot_id]['directions_scanned'] == 'down':
-                self.scan(robot_id, observation, 'left')
-                self.robot_state[robot_id]['directions_scanned'] = 'left'
-            elif self.robot_state[robot_id]['directions_scanned'] == 'left':
-                self.scan(robot_id, observation, 'up')
-                self.robot_state[robot_id]['directions_scanned'] = 'up'
-            # elif self.robot_state[robot_id]['directions_scanned'] == 'up':
-            #     robot = observation.robot(2)
-            #     self.print(robot.position)
-            #     self.robot_state[robot_id]['directions_scanned'] = 'sdfdsf'
-            #     self.get_path((robot.position), (4, 6))
+            if self.robot_state[robot_id]['flag'] == 0:
+                action.detect(robot_id)
+                self.robot_state[robot_id]['flag'] = 1
+            else:
+                if not self.robot_state[robot_id]['directions_scanned']:
+                    self.scan(robot_id, observation, 'right')
+                    self.robot_state[robot_id]['directions_scanned'] = 'right'
+
+                # elif self.robot_state[robot_id]['directions_scanned'] == 'right':
+                #     self.scan(robot_id, observation, 'down')
+                #     self.robot_state[robot_id]['directions_scanned'] = 'down'
+
+                elif self.robot_state[robot_id]['directions_scanned'] == 'right':
+                    self.scan(robot_id, observation, 'left')
+                    self.robot_state[robot_id]['directions_scanned'] = 'left'
+
+                elif self.robot_state[robot_id]['directions_scanned'] == 'left':
+                    self.scan(robot_id, observation, 'up')
+                    self.robot_state[robot_id]['directions_scanned'] = 'up'
+                # elif self.robot_state[robot_id]['directions_scanned'] == 'up':
+                #     robot = observation.robot(2)
+                #     self.print(robot.position)
+                #     self.robot_state[robot_id]['directions_scanned'] = 'sdfdsf'
+                #     self.get_path((robot.position), (4, 6))
+                self.robot_state[robot_id]['flag'] = 0
 
         return action
 
@@ -85,23 +97,25 @@ class Simple(Strategy):
         elif direction == 'down':
             bottom_y = robot.position[1] + obj.distance
 
+        # self.print(left_x, obj)
+
         if obj.object:
-            if right_x:
+            if right_x is not None:
                 self.map[robot.position[1]][right_x] = self.object_map[obj.object]
                 for i in range(robot.position[0], right_x):
                     self.map[robot.position[1]][i] = 'O'
-            if left_x:
+            if left_x is not None:
                 self.map[robot.position[1]][left_x] = self.object_map[obj.object]
-                for i in range(robot.position[0], left_x):
+                for i in range(robot.position[0], left_x, -1):
                     self.map[robot.position[1]][i] = 'O'
-            if top_y:
+            if top_y is not None:
                 self.map[top_y][robot.position[0]] = self.object_map[obj.object]
-                for i in range(robot.position[1], top_y):
-                    self.map[i][robot.position[1]] = 'O'
-            if bottom_y:
+                for i in range(robot.position[1], top_y, -1):
+                    self.map[i][robot.position[0]] = 'O'
+            if bottom_y is not None:
                 self.map[bottom_y][robot.position[0]] = self.object_map[obj.object]
                 for i in range(robot.position[1], bottom_y):
-                    self.map[i][robot.position[1]] = 'O'
+                    self.map[i][robot.position[0]] = 'O'
                 
     
         self.print(self.map)
@@ -195,24 +209,17 @@ if __name__ == "__main__":
 
 
 """
-strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
-strategy.0.SP: ['X', 'X', 'X', 'X', 'H', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
-strategy.0.SP: ['X', 'X', 'O', 'H', 'O', 'C', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
-strategy.0.SP: ['X', 'X', 'H', 'O', 'O', 'O', 'O', 'O', 'W', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
-strategy.0.SP: ['X', 'H', 'O', 'O', 'O', 'W', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
-strategy.0.SP: ['X', 'O', 'O', 'O', 'X', 'O', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
-strategy.0.SP: ['X', 'W', 'X', 'O', 'C', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
-strategy.0.SP: ['X', 'X', 'X', 'O', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
-strategy.0.SP: ['X', 'X', 'X', 'W', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
-strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
-strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
-strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
-strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
-strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
-strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
-strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
-strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
-strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
-strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
-strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
+[
+    ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], 
+    ['X', 'X', 'X', 'X', 'H', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], 
+    ['X', 'X', 'O', 'H', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], 
+    ['X', 'X', 'H', 'O', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], 
+    ['X', 'H', 'O', 'O', 'O', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], 
+    ['X', 'X', 'O', 'O', 'X', 'O', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], 
+    ['X', 'W', 'X', 'O', 'C', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], 
+    ['X', 'X', 'X', 'O', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], 
+    ['X', 'X', 'X', 'W', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], 
+    ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], 
+    ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], 
+    ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']]
 """
