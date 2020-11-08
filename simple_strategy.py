@@ -78,7 +78,13 @@ class Simple(Strategy):
                 self.robot_state[robot_id]['directions_scanned'] = 'left'
             elif self.robot_state[robot_id]['directions_scanned'] == 'left':
                 self.scan(robot_id, observation, 'up')
-                self.robot_state[robot_id]['directions_scanned'] = None
+                self.robot_state[robot_id]['directions_scanned'] = 'up'
+            elif self.robot_state[robot_id]['directions_scanned'] == 'up':
+                robot = observation.robot(2)
+                self.print(robot.position)
+                self.robot_state[robot_id]['directions_scanned'] = 'sdfdsf'
+                self.get_path((robot.position), (4, 6))
+
         return action
 
     def scan(self, robot_id, observation, direction):
@@ -114,45 +120,21 @@ class Simple(Strategy):
             if bottom_y:
                 self.map[robot.position[0]][bottom_y] = 'W'
                 for i in range(robot.position[1], bottom_y):
-                    self.map[robot.position[0]][i] = 'O'
-        elif obj.object == 'coin':
-            if right_x:
-                self.map[robot.position[1]][right_x] = 'C'
-                for i in range(robot.position[0], right_x):
-                    self.map[robot.position[1]][i] = 'O'
-            if left_x:
-                self.map[robot.position[1]][left_x] = 'C'
-                for i in range(robot.position[0], left_x):
-                    self.map[robot.position[1]][i] = 'O'
-            if top_y:
-                self.map[robot.position[0]][top_y] = 'C'
-                for i in range(robot.position[1], top_y):
-                    self.map[robot.position[0]][i] = 'O'
-            if bottom_y:
-                self.map[robot.position[0]][bottom_y] = 'C'
-                for i in range(robot.position[1], bottom_y):
-                    self.map[robot.position[0]][i] = 'O'
-        elif obj.object == 'home_base':
-            if right_x:
-                self.map[robot.position[1]][right_x] = 'H'
-                for i in range(robot.position[0], right_x):
-                    self.map[robot.position[1]][i] = 'O'
-            if left_x:
-                self.map[robot.position[1]][left_x] = 'H'
-                for i in range(robot.position[0], left_x):
-                    self.map[robot.position[1]][i] = 'O'
-            if top_y:
-                self.map[robot.position[0]][top_y] = 'H'
-                for i in range(robot.position[1], top_y):
-                    self.map[robot.position[0]][i] = 'O'
-            if bottom_y:
-                self.map[robot.position[0]][bottom_y] = 'H'
-                for i in range(robot.position[1], bottom_y):
-                    self.map[robot.position[0]][i] = 'O'
+                    self.map[i][robot.position[1]] = 'O'
+                
+    
+        # self.print_map()
+        # self.print()
+
+    def print_map(self):
+        for i in range(self.shape[0]):
+            self.print(self.map[i])
+
 
 
     def get_path(self, start, end):
         a = self.map
+        self.print_map()
         for i in range(len(a)):
             for j in range(len(a[i])):
                 if a[i][j] == 'O':
