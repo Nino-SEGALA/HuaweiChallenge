@@ -13,12 +13,14 @@ class Simple(Strategy):
 
 
     def init(self):
+
         self.object_map = {
             'wall': 'W',
             'coin': 'C',
             'home_base': 'H'
         }
         self.map = []
+
         self.robot_state = {}
         self.print('num_robots: {}'.format(self.num_robots))
         self.print('shape: {}'.format(self.shape))
@@ -30,7 +32,9 @@ class Simple(Strategy):
             self.robot_state[robot_id] = {
                 'detection_enabled': False,
                 'using_radar': False,
-                'directions_scanned': None
+                'directions_scanned': None,
+                'priority_path' : [], # If robot has to go to a coin or come back to home base, we call get_path()
+                'priority_path_index': None
             }
 
         for i in range(self.shape[0]):
@@ -46,8 +50,6 @@ class Simple(Strategy):
         # Loop over robots
         for robot_id in range(self.num_robots):
             action.detect(robot_id)
-            self.print(self.robot_state)
-            self.print()
             if not self.robot_state[robot_id]['directions_scanned']:
                 self.scan(robot_id, observation, 'right')
                 self.robot_state[robot_id]['directions_scanned'] = 'right'
@@ -106,6 +108,78 @@ class Simple(Strategy):
 
 
 
+    def get_path(self, start, end):
+        a = self.map
+        for i in range(len(a)):
+            for j in range(len(a[i])):
+                if a[i][j] == 'O':
+                    a[i][j] = 0
+                else:
+                    a[i][j] = 1
+
+        m = []
+        for i in range(len(a)):
+            m.append([])
+            for j in range(len(a[i])):
+                m[-1].append(0)
+        i,j = start
+        m[i][j] = 1
+
+        k = 0
+        while m[end[0]][end[1]] == 0:
+            k += 1
+            for i in range(len(m)):
+                for j in range(len(m[i])):
+                    if m[i][j] == k:
+                        if i>0 and m[i-1][j] == 0 and a[i-1][j] == 0:
+                            m[i-1][j] = k + 1
+                        if j>0 and m[i][j-1] == 0 and a[i][j-1] == 0:
+                            m[i][j-1] = k + 1
+                        if i<len(m)-1 and m[i+1][j] == 0 and a[i+1][j] == 0:
+                            m[i+1][j] = k + 1
+                        if j<len(m[i])-1 and m[i][j+1] == 0 and a[i][j+1] == 0:
+                            m[i][j+1] = k + 1
+        
+        i, j = end
+        k = m[i][j]
+        path = [(i,j)]
+        while k > 1:
+            if i > 0 and m[i - 1][j] == k-1:
+                i, j = i-1, j
+                path.append((i, j))
+                k-=1
+            elif j > 0 and m[i][j - 1] == k-1:
+                i, j = i, j-1
+                path.append((i, j))
+                k-=1
+            elif i < len(m) - 1 and m[i + 1][j] == k-1:
+                i, j = i+1, j
+                path.append((i, j))
+                k-=1
+            elif j < len(m[i]) - 1 and m[i][j + 1] == k-1:
+                i, j = i, j+1
+                path.append((i, j))
+                k -= 1
+
+        path.reverse()
+        self.print(path)
+
+        # Get Moves
+        moves = []
+        for i in range(len(path)-1):
+            self.print(path[i],path[i+1])
+            if path[i+1][0] > path[i][0]: # down
+                moves.append('down')
+            elif path[i+1][0] < path[i][0]: # up
+                moves.append('up')
+            elif path[i+1][1] > path[i][1]: # right
+                moves.append('right')
+            elif path[i+1][1] < path[i][1]: # left
+                moves.append('left')
+
+        self.print(moves)
+
+        
 # Run strategy
 if __name__ == "__main__":
     strategy = Simple()
