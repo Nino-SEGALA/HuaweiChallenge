@@ -62,11 +62,11 @@ class Simple(Strategy):
             elif self.robot_state[robot_id]['directions_scanned'] == 'left':
                 self.scan(robot_id, observation, 'up')
                 self.robot_state[robot_id]['directions_scanned'] = 'up'
-            elif self.robot_state[robot_id]['directions_scanned'] == 'up':
-                robot = observation.robot(2)
-                self.print(robot.position)
-                self.robot_state[robot_id]['directions_scanned'] = 'sdfdsf'
-                self.get_path((robot.position), (4, 6))
+            # elif self.robot_state[robot_id]['directions_scanned'] == 'up':
+            #     robot = observation.robot(2)
+            #     self.print(robot.position)
+            #     self.robot_state[robot_id]['directions_scanned'] = 'sdfdsf'
+            #     self.get_path((robot.position), (4, 6))
 
         return action
 
@@ -104,8 +104,8 @@ class Simple(Strategy):
                     self.map[i][robot.position[1]] = 'O'
                 
     
-        # self.print_map()
-        # self.print()
+        self.print(self.map)
+        self.print()
 
     def print_map(self):
         for i in range(self.shape[0]):
