@@ -49,7 +49,9 @@ class Simple(Strategy):
             self.robot_state[robot_id] = {
                 'detection_enabled': False,
                 'using_radar': False,
-                'directions_scanned': None
+                'directions_scanned': None,
+                'priority_path' : [], # If robot has to go to a coin or come back to home base, we call get_path()
+                'priority_path_index': None
             }
 
         for i in range(self.shape[0]):
@@ -153,10 +155,10 @@ class Simple(Strategy):
         a = self.map
         for i in range(len(a)):
             for j in range(len(a[i])):
-                if a[i][j] == 'X':
-                    a[i][j] = 1
-                else:
+                if a[i][j] == 'O':
                     a[i][j] = 0
+                else:
+                    a[i][j] = 1
 
         m = []
         for i in range(len(a)):
