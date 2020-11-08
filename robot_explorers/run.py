@@ -93,9 +93,9 @@ graphics_cb = gui.draw if args.visualize or args.headless else None
 
 config_board = {
     'shape': (20, 25),
-    'num_robots': 3,
+    'num_robots': 4,
     'energy': max_energy,
-    'num_hob': 3,
+    'num_hob': 10,
     'wall_density': 0.40,
     'num_coins_start': 35,
     'tau': 30,
