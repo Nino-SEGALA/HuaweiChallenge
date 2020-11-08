@@ -13,6 +13,11 @@ class Simple(Strategy):
 
 
     def init(self):
+        self.object_map = {
+            'wall': 'W',
+            'coin': 'C',
+            'home_base': 'H'
+        }
         self.map = []
         self.robot_state = {}
         self.print('num_robots: {}'.format(self.num_robots))
@@ -41,7 +46,8 @@ class Simple(Strategy):
         # Loop over robots
         for robot_id in range(self.num_robots):
             action.detect(robot_id)
-
+            self.print(self.robot_state)
+            self.print()
             if not self.robot_state[robot_id]['directions_scanned']:
                 self.scan(robot_id, observation, 'right')
                 self.robot_state[robot_id]['directions_scanned'] = 'right'
@@ -55,7 +61,6 @@ class Simple(Strategy):
                 self.scan(robot_id, observation, 'up')
                 self.robot_state[robot_id]['directions_scanned'] = None
 
-            
         return action
 
     def scan(self, robot_id, observation, direction):
@@ -72,62 +77,32 @@ class Simple(Strategy):
             top_y = robot.position[1] - obj.distance
         elif direction == 'down':
             bottom_y = robot.position[1] + obj.distance
-        
-        self.print(obj)
 
-        if obj.object == 'wall':
+        if obj.object:
             if right_x:
-                self.map[robot.position[1]][right_x] = 'W'
+                self.map[robot.position[1]][right_x] = self.object_map[obj.object]
                 for i in range(robot.position[0], right_x):
                     self.map[robot.position[1]][i] = 'O'
             if left_x:
-                self.map[robot.position[1]][left_x] = 'W'
+                self.map[robot.position[1]][left_x] = self.object_map[obj.object]
                 for i in range(robot.position[0], left_x):
                     self.map[robot.position[1]][i] = 'O'
             if top_y:
-                self.map[robot.position[0]][top_y] = 'W'
+                self.map[top_y][robot.position[0]] = self.object_map[obj.object]
                 for i in range(robot.position[1], top_y):
-                    self.map[robot.position[0]][i] = 'O'
+                    self.map[i][robot.position[1]] = 'O'
             if bottom_y:
-                self.map[robot.position[0]][bottom_y] = 'W'
+                self.map[bottom_y][robot.position[0]] = self.object_map[obj.object]
                 for i in range(robot.position[1], bottom_y):
-                    self.map[robot.position[0]][i] = 'O'
-        elif obj.object == 'coin':
-            if right_x:
-                self.map[robot.position[1]][right_x] = 'C'
-                for i in range(robot.position[0], right_x):
-                    self.map[robot.position[1]][i] = 'O'
-            if left_x:
-                self.map[robot.position[1]][left_x] = 'C'
-                for i in range(robot.position[0], left_x):
-                    self.map[robot.position[1]][i] = 'O'
-            if top_y:
-                self.map[robot.position[0]][top_y] = 'C'
-                for i in range(robot.position[1], top_y):
-                    self.map[robot.position[0]][i] = 'O'
-            if bottom_y:
-                self.map[robot.position[0]][bottom_y] = 'C'
-                for i in range(robot.position[1], bottom_y):
-                    self.map[robot.position[0]][i] = 'O'
-        elif obj.object == 'home_base':
-            if right_x:
-                self.map[robot.position[1]][right_x] = 'H'
-                for i in range(robot.position[0], right_x):
-                    self.map[robot.position[1]][i] = 'O'
-            if left_x:
-                self.map[robot.position[1]][left_x] = 'H'
-                for i in range(robot.position[0], left_x):
-                    self.map[robot.position[1]][i] = 'O'
-            if top_y:
-                self.map[robot.position[0]][top_y] = 'H'
-                for i in range(robot.position[1], top_y):
-                    self.map[robot.position[0]][i] = 'O'
-            if bottom_y:
-                self.map[robot.position[0]][bottom_y] = 'H'
-                for i in range(robot.position[1], bottom_y):
-                    self.map[robot.position[0]][i] = 'O'
+                    self.map[i][robot.position[1]] = 'O'
+                
+    
+        self.print_map()
+        self.print()
 
-        self.print(self.map)
+    def print_map(self):
+        for i in range(self.shape[0]):
+            self.print(self.map[i])
 
 
 
@@ -140,16 +115,24 @@ if __name__ == "__main__":
 
 
 """
-[
-    ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], 
-    ['X', 'X', 'X', 'X', 'H', 'O', 'W', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], 
-    ['X', 'X', 'X', 'H', 'O', 'C', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], 
-    ['X', 'X', 'H', 'O', 'O', 'O', 'O', 'O', 'W', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], 
-    ['X', 'H', 'O', 'O', 'O', 'O', 'C', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], 
-    ['X', 'O', 'C', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], 
-    ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], 
-    ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], 
-    ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], 
-    ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], 
-    ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'], ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']]
+strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
+strategy.0.SP: ['X', 'X', 'X', 'X', 'H', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
+strategy.0.SP: ['X', 'X', 'O', 'H', 'O', 'C', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
+strategy.0.SP: ['X', 'X', 'H', 'O', 'O', 'O', 'O', 'O', 'W', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
+strategy.0.SP: ['X', 'H', 'O', 'O', 'O', 'W', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
+strategy.0.SP: ['X', 'O', 'O', 'O', 'X', 'O', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
+strategy.0.SP: ['X', 'W', 'X', 'O', 'C', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
+strategy.0.SP: ['X', 'X', 'X', 'O', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
+strategy.0.SP: ['X', 'X', 'X', 'W', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
+strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
+strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
+strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
+strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
+strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
+strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
+strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
+strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
+strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
+strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
+strategy.0.SP: ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
 """
