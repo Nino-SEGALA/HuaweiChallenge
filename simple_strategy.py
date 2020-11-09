@@ -21,8 +21,7 @@ class Simple(Strategy):
             'robot': 'R'
         }
         self.map = []
-
-        self.flag = 0
+        self.has_scouts = False
 
         self.robot_state = {}
         self.print('num_robots: {}'.format(self.num_robots))
@@ -38,8 +37,14 @@ class Simple(Strategy):
                 'directions_scanned': None,
                 'priority_path' : [], # If robot has to go to a coin or come back to home base, we call get_path()
                 'priority_path_index': None,
-                'flag': 0
+                'role': 'W',
+                'action': None
             }
+
+        if self.num_robots > 2:
+            self.robot_state[2]['role'] = 'S'
+            self.robot_state[3]['role'] = 'S'
+            self.has_scouts = True
 
         for i in range(self.shape[0]):
             new_row = []
@@ -51,35 +56,62 @@ class Simple(Strategy):
     def step(self, observation):
         action = self.action()
 
-        # Loop over robots
-        for robot_id in range(self.num_robots):
-            if self.robot_state[robot_id]['flag'] == 0:
-                action.detect(robot_id)
-                self.robot_state[robot_id]['flag'] = 1
-            else:
-                if not self.robot_state[robot_id]['directions_scanned']:
-                    self.scan(robot_id, observation, 'right')
-                    self.robot_state[robot_id]['directions_scanned'] = 'right'
-
-                elif self.robot_state[robot_id]['directions_scanned'] == 'right':
-                    self.scan(robot_id, observation, 'down')
-                    self.robot_state[robot_id]['directions_scanned'] = 'down'
-
-                elif self.robot_state[robot_id]['directions_scanned'] == 'down':
-                    self.scan(robot_id, observation, 'left')
-                    self.robot_state[robot_id]['directions_scanned'] = 'left'
-
-                elif self.robot_state[robot_id]['directions_scanned'] == 'left':
-                    self.scan(robot_id, observation, 'up')
-                    self.robot_state[robot_id]['directions_scanned'] = 'up'
-
-                # elif self.robot_state[robot_id]['directions_scanned'] == 'up':
-                #     robot = observation.robot(2)
-                #     self.robot_state[robot_id]['directions_scanned'] = 'sdfdsf'
-                #     self.get_path((robot.position), (4, 6))
-                self.robot_state[robot_id]['flag'] = 0
+        if self.has_scouts:
+            if self.robot_state[3]['action'] == None or self.robot_state[3]['action'] == 'down':
+                self.robot_state[3]['action'] = 'down'
+                if not self.move_down(3, observation, action):
+                    self.robot_state[3]['action'] = 'up'
+                
+            if self.robot_state[3]['action'] == 'up':
+                if not self.move_up(3, observation, action):
+                    self.robot_state[3]['action'] = 'down'
 
         return action
+
+    def move_down(self, robot_id, observation, action):
+        robot = observation.robot(robot_id)
+
+        self.robot_state[robot_id]['action'] = 'down'
+
+        if not self.robot_state[robot_id]['detection_enabled'] and self.robot_state[robot_id]['directions_scanned'] != 'down':
+            action.detect(robot_id)
+            self.robot_state[robot_id]['detection_enabled'] = True
+            return True
+        elif self.robot_state[robot_id]['detection_enabled']:            
+            self.scan(robot_id, observation, 'down')
+            self.robot_state[robot_id]['directions_scanned'] = 'down'
+            self.robot_state[robot_id]['detection_enabled'] = False
+            return True
+        elif self.robot_state[robot_id]['directions_scanned'] == 'down':
+            if robot.position[1]+1 < self.shape[1]:
+                if self.map[robot.position[1]+1][robot.position[0]] not in ('W', 'R', 'X'):
+                    action.move(robot_id, 'down')
+                    return True
+
+        return False
+    
+    def move_up(self, robot_id, observation, action):
+        robot = observation.robot(robot_id)
+
+        if not self.robot_state[robot_id]['detection_enabled'] and self.robot_state[robot_id]['directions_scanned'] != 'up':
+            action.detect(robot_id)
+            self.robot_state[robot_id]['detection_enabled'] = True
+            return True
+        elif self.robot_state[robot_id]['detection_enabled']:
+            self.print("MOVING UP")
+            self.scan(robot_id, observation, 'up')
+            self.robot_state[robot_id]['directions_scanned'] = 'up'
+            self.robot_state[robot_id]['detection_enabled'] = False
+            return True
+        elif self.robot_state[robot_id]['directions_scanned'] == 'up':
+            if robot.position[1]-1 >= 0:
+                if self.map[robot.position[1]-1][robot.position[0]]  not in ('W', 'R', 'X'):
+                    action.move(robot_id, 'up')
+                    return True
+
+        return False
+
+
 
     def scan(self, robot_id, observation, direction):
         robot = observation.robot(robot_id)
@@ -114,9 +146,6 @@ class Simple(Strategy):
                 for i in range(robot.position[1], bottom_y):
                     self.map[i][robot.position[0]] = 'O'
                 
-    
-        self.print(self.map)
-        self.print()
 
     def print_map(self):
         for i in range(self.shape[0]):

@@ -27,7 +27,7 @@ parser.add_argument('--about', action='store_true', help='Print info and license
 
 ## Args
 args = parser.parse_args()
-max_energy = 100
+max_energy = 700
 
 # Print about
 if args.about:
