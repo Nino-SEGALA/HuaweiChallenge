@@ -72,9 +72,9 @@ class Simple(Strategy):
                 elif self.robot_state[robot_id]['directions_scanned'] == 'left':
                     self.scan(robot_id, observation, 'up')
                     self.robot_state[robot_id]['directions_scanned'] = 'up'
+
                 # elif self.robot_state[robot_id]['directions_scanned'] == 'up':
                 #     robot = observation.robot(2)
-                #     self.print(robot.position)
                 #     self.robot_state[robot_id]['directions_scanned'] = 'sdfdsf'
                 #     self.get_path((robot.position), (4, 6))
                 self.robot_state[robot_id]['flag'] = 0
@@ -110,7 +110,6 @@ class Simple(Strategy):
                 for i in range(robot.position[1], top_y, -1):
                     self.map[i][robot.position[0]] = 'O'
             if bottom_y is not None:
-                self.print('ROBOT', robot.position[0])
                 self.map[bottom_y][robot.position[0]] = self.object_map[obj.object]
                 for i in range(robot.position[1], bottom_y):
                     self.map[i][robot.position[0]] = 'O'
@@ -127,7 +126,6 @@ class Simple(Strategy):
 
     def get_path(self, start, end):
         a = self.map
-        self.print_map()
         for i in range(len(a)):
             for j in range(len(a[i])):
                 if a[i][j] == 'O':
@@ -144,6 +142,9 @@ class Simple(Strategy):
         m[i][j] = 1
 
         k = 0
+
+        self.print(m)
+        return
         while m[end[0]][end[1]] == 0:
             k += 1
             for i in range(len(m)):
@@ -158,6 +159,9 @@ class Simple(Strategy):
                         if j<len(m[i])-1 and m[i][j+1] == 0 and a[i][j+1] == 0:
                             m[i][j+1] = k + 1
         
+        self.print("HERE")
+
+
         i, j = end
         k = m[i][j]
         path = [(i,j)]
