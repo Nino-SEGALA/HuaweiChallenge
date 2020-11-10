@@ -119,39 +119,12 @@ class Simple(Strategy):
                 elif self.get_neighbor(robot, 'down') in ('O', 'X'):
                     self.robot_state[self.scout_id]['direction'] = 'down'
 
-        # elif not self.robot_state[self.scout_id]['reached_far_right']:
-        #     if self.map[robot.position[1]][robot.position[0] + 1] == 'X':
-        #         self.scan(self.scout_id, observation, action, 'right')
-        #         self.print("SCANNING")
-        #     elif self.map[robot.position[1]][robot.position[0] + 1] == 'O':
-        #         self.move_right(self.scout_id, observation, action)
-        #         self.print("MOVING RIGHT")
-            
-        #     elif self.map[robot.position[1] + 1][robot.position[0]] == 'X':
-        #         self.scan(self.scout_id, observation, action, 'down')
-        #         self.print("SCANNING")
-        #     elif self.map[robot.position[1] + 1][robot.position[0]] == 'O':
-        #         self.move_down(self.scout_id, observation, action)
-        #         self.print("MOVING DOWN")
-
-        #     elif self.map[robot.position[1]-1][robot.position[0]] == 'X':
-        #         self.scan(self.scout_id, observation, action, 'up')
-        #         self.print("SCANNING")
-        #     elif self.map[robot.position[1]-1][robot.position[0]] == 'O':
-        #         self.move_up(self.scout_id, observation, action)
-        #         self.print("MOVING UP")
-
-        
-
 
         if robot.position[0] == self.shape[1] - 2:
             self.robot_state[self.scout_id]['reached_far_right'] = True
         
         if robot.position[1] == self.shape[0] - 2:
             self.robot_state[self.scout_id]['reached_far_bottom'] = True
-            
-
-    
 
         return action
 
