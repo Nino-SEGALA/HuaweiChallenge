@@ -20,6 +20,14 @@ class Simple(Strategy):
             'home_base': 'H',
             'robot': 'R'
         }
+
+        self.opp_direction = {
+            'left': 'right',
+            'up': 'down',
+            'down': 'up',
+            'right': 'left'
+        }
+
         self.map = []
         self.has_scouts = False
 
@@ -33,7 +41,6 @@ class Simple(Strategy):
                 'priority_path' : [], # If robot has to go to a coin or come back to home base, we call get_path()
                 'priority_path_index': None,
                 'role': 'W',
-                'going_for_coin': False,
                 'traversed_path_from_home_base': []
             }
 
@@ -67,103 +74,76 @@ class Simple(Strategy):
                 return action
 
             # Last step to home
-            if self.look_straight(robot, 'left') == 'H':
+            if self.look_straight(robot, 'left')[0] == 'H':
                 action.move(self.scout_id, 'left')
                 return action
-            if self.look_straight(robot, 'right') == 'H':
+            if self.look_straight(robot, 'right')[0] == 'H':
                 action.move(self.scout_id, 'right')
                 return action
-            if self.look_straight(robot, 'up') == 'H':
+            if self.look_straight(robot, 'up')[0] == 'H':
                 action.move(self.scout_id, 'up')
                 return action
-            if self.look_straight(robot, 'down') == 'H':
+            if self.look_straight(robot, 'down')[0] == 'H':
                 action.move(self.scout_id, 'down')
                 return action
 
             # If home not found
-            if self.look_straight(robot, 'left') == 'X':
+            if self.look_straight(robot, 'left')[0] == 'X':
                 self.scan(self.scout_id, observation, action, 'left')
                 self.print("SCANNING LEFT")
                 return action
             
-            if self.look_straight(robot, 'down') == 'X':
-                robot_state['going_for_coin'] = False
+            if self.look_straight(robot, 'down')[0] == 'X':
                 self.scan(self.scout_id, observation, action, 'down')
                 self.print("SCANNING DOWN")
                 return action
 
-            if self.look_straight(robot, 'left') == 'X':
-                robot_state['going_for_coin'] = False
+            if self.look_straight(robot, 'left')[0] == 'X':
                 self.scan(self.scout_id, observation, action, 'left')
                 self.print("SCANNING LEFT")
                 return action
 
-            if self.look_straight(robot, 'up') == 'X':
-                robot_state['going_for_coin'] = False
+            if self.look_straight(robot, 'up')[0] == 'X':
                 self.scan(self.scout_id, observation, action, 'up')
                 self.print("SCANNING UP")
                 return action
 
-
-        # Spotted a coin, Move towards coin
-        if self.look_straight(robot, 'right') == 'C':
-            robot_state['going_for_coin'] = True
-            self.move_right(self.scout_id, observation, action)
-            robot_state['traversed_path_from_home_base'].insert(0, 'left')
-            self.print("MOVING RIGHT")
-            if self.get_neighbor(robot, 'right') == 'C':
+        # If coins spotted, prioritize the coin with smallest distance and just go for it!
+        priority_direction = self.get_direction_priority_when_coin_spot(robot)
+        if priority_direction:
+            action.move(self.scout_id, priority_direction)
+            robot_state['traversed_path_from_home_base'].insert(0, self.opp_direction[priority_direction])
+            self.print("MOVING {}".format(priority_direction))
+            
+            if priority_direction == 'right':
                 self.map[robot.position[1]][robot.position[0] + 1] = 'O'
-            return action
-
-        if self.look_straight(robot, 'left') == 'C':
-            robot_state['going_for_coin'] = True
-            self.move_left(self.scout_id, observation, action)
-            robot_state['traversed_path_from_home_base'].insert(0, 'right')
-            self.print("MOVING LEFT")
-            if self.get_neighbor(robot, 'left') == 'C':
+            if priority_direction == 'left':
                 self.map[robot.position[1]][robot.position[0] - 1] = 'O'
-            return action
-
-        if self.look_straight(robot, 'down') == 'C':
-            robot_state['going_for_coin'] = True
-            self.move_down(self.scout_id, observation, action)
-            robot_state['traversed_path_from_home_base'].insert(0, 'up')
-            self.print("MOVING DOWN")
-            if self.get_neighbor(robot, 'down') == 'C':
-                self.map[robot.position[1] + 1][robot.position[0]] = 'O'
-            return action
-
-        if self.look_straight(robot, 'up') == 'C':
-            robot_state['going_for_coin'] = True
-            self.move_up(self.scout_id, observation, action)
-            robot_state['traversed_path_from_home_base'].insert(0, 'down')
-            self.print("MOVING UP")
-            if self.get_neighbor(robot, 'up') == 'C':
+            if priority_direction == 'up':
                 self.map[robot.position[1] - 1][robot.position[0]] = 'O'
+            if priority_direction == 'down':
+                self.map[robot.position[1] + 1][robot.position[0]] = 'O'
             return action
         
 
         # Scan
-        if self.look_straight(robot, 'right') == 'X':
-            robot_state['going_for_coin'] = False
+        # Scan right only if the robot is not in the right edge (save 2 timesteps)
+        if self.look_straight(robot, 'right')[0] == 'X' and robot.position[0] < self.shape[1] - 2:
             self.scan(self.scout_id, observation, action, 'right')
             self.print("SCANNING RIGHT")
             return action
 
-        if self.look_straight(robot, 'down') == 'X':
-            robot_state['going_for_coin'] = False
+        if self.look_straight(robot, 'down')[0] == 'X' and robot.position[1] < self.shape[0] - 2:
             self.scan(self.scout_id, observation, action, 'down')
             self.print("SCANNING DOWN")
             return action
 
-        if self.look_straight(robot, 'left') == 'X':
-            robot_state['going_for_coin'] = False
+        if self.look_straight(robot, 'left')[0] == 'X' and robot.position[0] > 1:
             self.scan(self.scout_id, observation, action, 'left')
             self.print("SCANNING LEFT")
             return action
 
-        if self.look_straight(robot, 'up') == 'X':
-            robot_state['going_for_coin'] = False
+        if self.look_straight(robot, 'up')[0] == 'X' and robot.position[1] > 2:
             self.scan(self.scout_id, observation, action, 'up')
             self.print("SCANNING UP")
             return action
@@ -194,8 +174,23 @@ class Simple(Strategy):
             self.print("MOVING UP")
             return action
 
-
         return action
+
+    def get_direction_priority_when_coin_spot(self, robot):
+        items = {
+            'left': self.look_straight(robot, 'left'), 
+            'right': self.look_straight(robot, 'right'), 
+            'up': self.look_straight(robot, 'up'), 
+            'down': self.look_straight(robot, 'down')
+        }
+        direction = None
+        distance = 9999999
+        for key, value in items.items():
+            if value[0] == 'C' and value[1] <= distance:
+                distance = value[1]
+                direction = key
+
+        return direction
 
     def move_down(self, robot_id, observation, action):
         robot = observation.robot(robot_id)
@@ -235,25 +230,30 @@ class Simple(Strategy):
     def look_straight(self, robot, direction):
         robot_x = robot.position[0]
         robot_y = robot.position[1]
+        distance = 0
         if direction == 'right':
             while self.map[robot_y][robot_x + 1] == 'O':
                 robot_x += 1
-            return self.map[robot_y][robot_x + 1]
+                distance += 1
+            return self.map[robot_y][robot_x + 1], distance
 
         if direction == 'left':
             while self.map[robot_y][robot_x - 1] == 'O':
                 robot_x -= 1
-            return self.map[robot_y][robot_x - 1]
+                distance += 1
+            return self.map[robot_y][robot_x - 1], distance
 
         if direction == 'up':
             while self.map[robot_y - 1][robot_x] == 'O':
                 robot_y -= 1
-            return self.map[robot_y - 1][robot_x]
+                distance += 1
+            return self.map[robot_y - 1][robot_x], distance
         
         if direction == 'down':
             while self.map[robot_y + 1][robot_x] == 'O':
                 robot_y += 1
-            return self.map[robot_y + 1][robot_x]
+                distance += 1
+            return self.map[robot_y + 1][robot_x], distance
 
     def get_neighbor(self, robot, direction):
         if direction == 'left':
