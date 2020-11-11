@@ -57,6 +57,7 @@ class Simple(Strategy):
 
         self.print('DIRECTION', robot_state['traversed_path_from_home_base'])
 
+        # Robot has coin, return to home base
         if robot.has_item:
             if len(robot_state['traversed_path_from_home_base']) > 0:
                 direction_to_move = robot_state['traversed_path_from_home_base'][0]
@@ -104,12 +105,14 @@ class Simple(Strategy):
                 return action
 
 
-        # Move towards coin
+        # Spotted a coin, Move towards coin
         if self.look_straight(robot, 'right') == 'C':
             robot_state['going_for_coin'] = True
             self.move_right(self.scout_id, observation, action)
             robot_state['traversed_path_from_home_base'].insert(0, 'left')
             self.print("MOVING RIGHT")
+            if self.get_neighbor(robot, 'right') == 'C':
+                self.map[robot.position[1]][robot.position[0] + 1] = 'O'
             return action
 
         if self.look_straight(robot, 'left') == 'C':
@@ -117,6 +120,8 @@ class Simple(Strategy):
             self.move_left(self.scout_id, observation, action)
             robot_state['traversed_path_from_home_base'].insert(0, 'right')
             self.print("MOVING LEFT")
+            if self.get_neighbor(robot, 'left') == 'C':
+                self.map[robot.position[1]][robot.position[0] - 1] = 'O'
             return action
 
         if self.look_straight(robot, 'down') == 'C':
@@ -124,6 +129,8 @@ class Simple(Strategy):
             self.move_down(self.scout_id, observation, action)
             robot_state['traversed_path_from_home_base'].insert(0, 'up')
             self.print("MOVING DOWN")
+            if self.get_neighbor(robot, 'down') == 'C':
+                self.map[robot.position[1] + 1][robot.position[0]] = 'O'
             return action
 
         if self.look_straight(robot, 'up') == 'C':
@@ -131,6 +138,8 @@ class Simple(Strategy):
             self.move_up(self.scout_id, observation, action)
             robot_state['traversed_path_from_home_base'].insert(0, 'down')
             self.print("MOVING UP")
+            if self.get_neighbor(robot, 'up') == 'C':
+                self.map[robot.position[1] - 1][robot.position[0]] = 'O'
             return action
         
 
@@ -159,6 +168,31 @@ class Simple(Strategy):
             self.print("SCANNING UP")
             return action
 
+
+        # Nothing to do, if neighbor is empty, take 1 move towards it
+        if self.get_neighbor(robot, 'right') == 'O':
+            action.move(self.scout_id, 'right')
+            robot_state['traversed_path_from_home_base'].insert(0, 'left')
+            self.print("MOVING RIGHT")
+            return action
+        
+        if self.get_neighbor(robot, 'down') == 'O':
+            action.move(self.scout_id, 'down')
+            robot_state['traversed_path_from_home_base'].insert(0, 'up')
+            self.print("MOVING DOWN")
+            return action
+
+        if self.get_neighbor(robot, 'left') == 'O':
+            action.move(self.scout_id, 'left')
+            robot_state['traversed_path_from_home_base'].insert(0, 'right')
+            self.print("MOVING LEFT")
+            return action
+
+        if self.get_neighbor(robot, 'up') == 'O':
+            action.move(self.scout_id, 'up')
+            robot_state['traversed_path_from_home_base'].insert(0, 'down')
+            self.print("MOVING UP")
+            return action
 
 
         return action
@@ -220,6 +254,16 @@ class Simple(Strategy):
             while self.map[robot_y + 1][robot_x] == 'O':
                 robot_y += 1
             return self.map[robot_y + 1][robot_x]
+
+    def get_neighbor(self, robot, direction):
+        if direction == 'left':
+            return self.map[robot.position[1]][robot.position[0] - 1]
+        if direction == 'right':
+            return self.map[robot.position[1]][robot.position[0] + 1]
+        if direction == 'up':
+            return self.map[robot.position[1] - 1][robot.position[0]]
+        if direction == 'down':
+            return self.map[robot.position[1] + 1][robot.position[0]]
 
     def scan(self, robot_id, observation, action, direction):
         robot = observation.robot(robot_id)
