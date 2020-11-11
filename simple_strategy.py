@@ -23,7 +23,7 @@ class Simple(Strategy):
         self.map = []
         self.has_scouts = False
 
-        self.scout_id = 3
+        self.scout_id = 0
 
         self.robot_state = {}
 
