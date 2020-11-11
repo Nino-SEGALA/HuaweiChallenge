@@ -36,7 +36,9 @@ class Strat3(Strategy):
         # For representing directions with indices
         self.directions = ['up', 'right', 'down', 'left']
         # Values of the different object in the board_map
-        self.map_values = {"home_base": -10, "wall": -5, "coin": -1, "robot": -15, "free_square": 0}  # other value?
+        #self.map_values = {"home_base": -10, "wall": -5, "coin": -1, "robot": -15, "free_square": 0}  # other value?
+        self.map_values = {"home_base": 'H', "wall": 'W', "coin": 'C', "robot": 'R', "free_square": 0,
+                           "unidentified": 'U'}  # other value?
         # "home_base": 0 because we are at distance 0 of the home_base?
         # Depth of simulation for the best move
         self.depth = 4
@@ -44,6 +46,10 @@ class Strat3(Strategy):
         self.hyperparameters = {"alpha": 1, "beta": 100, "gamma": -30, "delta": 1.2, "epsilon": 1.5, "zeta": -30}
         # Initialization of the known map
         self.board_map = self.initMap()
+        # Count at which step we are
+        self.step = 0
+        # Position of our home_base
+        self.home_base_position = (1, 1)  # Will be adapted during the step 1
 
     def step(self, observation):
         ''' Called every time an observation has been received
@@ -60,6 +66,12 @@ class Strat3(Strategy):
         self.print('score: {}'.format(observation.score))
         self.print('opponent score: {}'.format(observation.opponent_score))
         self.print('added_coins: {}'.format(observation.added_coins))
+
+        # increase the step number
+        self.step += 1
+        # if we are at step 1 we identified our home_base
+        if self.step == 1:
+            self.positionHomeBase(observation)
 
         # Initialize empty action
         action = self.action()
@@ -98,6 +110,20 @@ class Strat3(Strategy):
 
         return action
 
+    # Calculate the position of our home_base
+    def positionHomeBase(self, observation):
+        x, y = self.shape
+        robot = observation.robot(0)  # we take the first robot
+        robot_x, robot_y = tuple(robot.position)
+        home_x, home_y = (1, 1)  # upper position
+
+        # if the robot is at the top of the board, we have the upper home_base
+        if robot_x < x-robot_x:
+            self.home_base_position = home_x, home_y
+        # if the robot is at the bottom of the board, we have the lower home_base
+        else:
+            self.home_base_position = self.symmetric((home_x, home_y))
+
     # Creates the known-map of the board
     def initMap(self):
         board_map = np.full(self.shape, np.inf)  # what is unknown is set to infinity
@@ -118,15 +144,6 @@ class Strat3(Strategy):
         board_map[self.shape[0] - 2][2] = self.map_values["home_base"]
         board_map[self.shape[0] - 3][1] = self.map_values["home_base"]
 
-        """### robots positions
-        for robot_id in range(self.num_robots):
-            robot_x, robot_y = tuple(robot_id.position)  # we get the position of the robot
-            symmetric_x = self.symmetric((robot_x, robot_y))[0]  # the symmetric point (symmetric_x, robot_y)
-
-            # the robot position
-            board_map[robot_x][robot_y] = self.map_values["free_square"]  # where the robot is located is a free square
-            board_map[symmetric_x][robot_y] = self.map_values["free_square"]  # the symmetric position also"""
-
         return board_map
 
     # Return the symmetric of position
@@ -143,8 +160,11 @@ class Strat3(Strategy):
             x = robot_x + i * dir_x
             y = robot_y + i * dir_y
             sym_x, y = self.symmetric((x, y))  # the symmetric position
-            self.board_map[x][y] = self.map_values["free_square"]
-            self.board_map[sym_x][y] = self.map_values["free_square"]
+            # if we already know there is a free_square, it stores the distance to the home_base
+            # so we don't want to overwrite it
+            if not type(self.board_map[x][y]) == int:
+                self.board_map[x][y] = self.map_values["free_square"]
+                self.board_map[sym_x][y] = self.map_values["free_square"]
 
         # position of the detected object
         x = robot_x + radar.distance * dir_x
@@ -153,9 +173,11 @@ class Strat3(Strategy):
         obj = radar.object
         if obj == "robot":  # if we detected a robot it means there is a free_square at this place
             obj = "free_square"
-        if obj != None:  # problem with radar.object (how to get the results of the action detect?)
-            self.board_map[x][y] = self.map_values[obj]
-            self.board_map[sym_x][y] = self.map_values[obj]
+        if obj == None:  # if we didn't detect, the object is unidentified
+            obj = "unidentified"
+        # we store the nature of the object in the map
+        self.board_map[x][y] = self.map_values[obj]
+        self.board_map[sym_x][y] = self.map_values[obj]
 
     # Calculate the distance to the home-base of every point of the board_map
     def distanceMap(self):
@@ -171,14 +193,14 @@ class Strat3(Strategy):
             return None
         minValue = np.inf
         # neighbors
-        v1 = self.board_map[x - 1][y]  # up
-        v2 = self.board_map[x][y - 1]  # left
-        v3 = self.board_map[x][y + 1]  # right
-        v4 = self.board_map[x + 1][y]  # bottom
+        v1 = self.board_map[x-1][y]  # up
+        v2 = self.board_map[x][y-1]  # left
+        v3 = self.board_map[x][y+1]  # right
+        v4 = self.board_map[x+1][y]  # bottom
 
         # we look at the neighbors
         for v in [v1, v2, v3, v4]:
-            if v < minValue and v > 0:
+            if v < minValue-1 and v > 0:
                 minValue = v + 1  # it takes 1 more step to achieve this position from the home_base
             if v == self.map_values["home_base"]:  # if we are next to the home_base (problem: opponent home_base)
                 minValue = 1
@@ -273,6 +295,7 @@ class Strat3(Strategy):
         prop = 0
         for x in range(1, n - 1):  # we don't look at the borders
             for y in range(1, p - 1):  # we don't look at the borders
+                # what with the "unidentified" objects ?
                 if self.board_map[x][y] != np.inf:  # if we know what is in the position (x, y)
                     prop += 1
         return prop / (n - 2 * p - 2)  # the dimensions of the board_map without the borders
