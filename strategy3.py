@@ -36,16 +36,14 @@ class Strat3(Strategy):
         # For representing directions with indices
         self.directions = ['up', 'right', 'down', 'left']
         # Values of the different object in the board_map
-        #self.map_values = {"home_base": -10, "wall": -5, "coin": -1, "robot": -15, "free_square": 0}  # other value?
-        self.map_values = {"home_base": 'H', "wall": 'W', "coin": 'C', "robot": 'R', "free_square": 0,
-                           "unidentified": 'U'}  # other value?
-        # "home_base": 0 because we are at distance 0 of the home_base?
+        self.map_values = {"home_base": 'H', "opponent_home_base": 'O', "wall": 'W', "coin": 'C', "fake_coin": 'F',
+                           "robot": 'R', "free_square": 0, "unidentified": 'U'}  # other value?
         # Depth of simulation for the best move
-        self.depth = 4
+        self.depth = 3
         # Values for the best move todo: find the best hyperparameters
         self.hyperparameters = {"alpha": 1, "beta": 100, "gamma": -30, "delta": 1.2, "epsilon": 1.5, "zeta": -30}
         # Initialization of the known map
-        self.board_map = self.initMap()
+        self.board_map = None  # Will be initialize during the step 1
         # Count at which step we are
         self.step = 0
         # Position of our home_base
@@ -71,7 +69,8 @@ class Strat3(Strategy):
         self.step += 1
         # if we are at step 1 we identified our home_base
         if self.step == 1:
-            self.positionHomeBase(observation)
+            self.positionHomeBase(observation)  # We play up or bottom ?
+            self.board_map = self.initMap()  # Initialization of the board_map
 
         # Initialize empty action
         action = self.action()
@@ -135,14 +134,35 @@ class Strat3(Strategy):
         board_map[self.shape[0]-1, 0:self.shape[1]-1] = self.map_values["wall"]  # bottom walls
 
         ### the home-bases
-        # up home_base
-        board_map[1][1] = self.map_values["home_base"]
-        board_map[1][2] = self.map_values["home_base"]
-        board_map[2][1] = self.map_values["home_base"]
-        # bottom home_base
-        board_map[self.shape[0] - 2][1] = self.map_values["home_base"]
-        board_map[self.shape[0] - 2][2] = self.map_values["home_base"]
-        board_map[self.shape[0] - 3][1] = self.map_values["home_base"]
+        # if we play at the top
+        if self.home_base_position == (1, 1):
+            home_base1 = "home_base"
+            home_base2 = "opponent_home_base"
+        # if we play at the bottom
+        else:
+            home_base1 = "opponent_home_base"
+            home_base2 = "home_base"
+        sym_x, sym_y = self.symmetric((1, 1))
+        board_map[1][1] = self.map_values[home_base1]  # the upper home_base
+        board_map[sym_x][sym_y] = self.map_values[home_base2]  # the bottom home_base
+
+        """ # Problem: we have no information about num_hob (number of home_base)
+        i = 0
+        x, y = (1, 1)
+        while i < self.num_hob:
+            sym_x, sym_y = self.symmetric((x, y))
+            board_map[x][y] = self.map_values[home_base1]
+            board_map[sym_x][sym_y] = self.map_values[home_base2]
+
+            # next step
+            i += 1
+            # if we just evaluate a home_base box stuck to the upper limit,
+            # the new home_base box will be stuck to the left border
+            if x == 1:
+                x, y = y+1, 1
+            # else the new home_base box will be up and right of the previous one
+            else:
+                x, y = x-1, y+1"""
 
         return board_map
 
@@ -178,8 +198,9 @@ class Strat3(Strategy):
         # we store the nature of the object in the map
         self.board_map[x][y] = self.map_values[obj]
         self.board_map[sym_x][y] = self.map_values[obj]
-        
-        # todo call self.distanceMap
+
+        # we update the board_map with the distance to our home_base (from the new discovered free_squares)
+        self.distanceMap()
 
     # Calculate the distance to the home-base of every point of the board_map
     def distanceMap(self):
