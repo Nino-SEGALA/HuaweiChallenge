@@ -41,7 +41,7 @@ class Strat3(Strategy):
         # Depth of simulation for the best move
         self.depth = 3
         # Values for the best move todo: find the best hyperparameters
-        self.hyperparameters = {"alpha": 1, "beta": 100, "gamma": -30, "delta": 1.2, "epsilon": 1.5, "zeta": -30}
+        self.hyperparameters = {"alpha": 1, "beta": 100, "gamma": -30, "delta": 1.2, "epsilon": 100, "zeta": -30}
         # Initialization of the known map
         self.board_map = None  # Will be initialize during the step 1
         # Count at which step we are
@@ -103,11 +103,14 @@ class Strat3(Strategy):
 
             ### Choice of the best action
             self.print("bestMove evaluation")
-            #move = self.bestMove(observation, robot)  # we get the best move
+            # move = self.bestMove(observation, robot)  # we get the best move
             move = "right"
             self.print(move)
             action.move(robot_id, move)  # set move action
             action.detect(robot_id)  # we detect what we see
+
+        self.print(f"step {self.current_step} : board_map")
+        self.print(self.board_map)
 
         return action
 
@@ -119,7 +122,7 @@ class Strat3(Strategy):
         home_x, home_y = (1, 1)  # upper position
 
         # if the robot is at the top of the board, we have the upper home_base
-        if robot_x < x-robot_x:
+        if robot_x < x - robot_x:
             self.home_base_position = home_x, home_y
         # if the robot is at the bottom of the board, we have the lower home_base
         else:
@@ -131,9 +134,9 @@ class Strat3(Strategy):
 
         ### side walls
         board_map[0:self.shape[0], 0] = self.map_values["wall"]  # left walls
-        board_map[0:self.shape[0], self.shape[1]-1] = self.map_values["wall"]  # right walls
+        board_map[0:self.shape[0], self.shape[1] - 1] = self.map_values["wall"]  # right walls
         board_map[0, 0:self.shape[1]] = self.map_values["wall"]  # up walls
-        board_map[self.shape[0]-1, 0:self.shape[1]-1] = self.map_values["wall"]  # bottom walls
+        board_map[self.shape[0] - 1, 0:self.shape[1] - 1] = self.map_values["wall"]  # bottom walls
 
         ### the home-bases
         # if we play at the top
@@ -192,17 +195,57 @@ class Strat3(Strategy):
         x = robot_x + radar.distance * dir_x
         y = robot_y + radar.distance * dir_y
         sym_x, y = self.symmetric((x, y))  # the symmetric position
-        obj = radar.object
-        if obj == "robot":  # if we detected a robot it means there is a free_square at this place
-            obj = "free_square"
-        if obj == None:  # if we didn't detect, the object is unidentified
-            obj = "unidentified"
-        # we store the nature of the object in the map
-        self.board_map[x][y] = self.map_values[obj]
-        self.board_map[sym_x][y] = self.map_values[obj]
+        # we store the nature of the object in the map (we don't replace immutable items)
+        if self.board_map[x][y] not in (self.map_values["home_base"],
+                                        self.map_values["opponent_home_base"],
+                                        self.map_values["wall"]):
+            obj = radar.object
+            if obj == "robot":  # if we detected a robot it means there is a free_square at this place
+                obj = "free_square"
+            if obj is None:  # if we didn't detect, the object is unidentified
+                obj = "unidentified"
+            self.board_map[x][y] = self.map_values[obj]
+            self.board_map[sym_x][y] = self.map_values[obj]
+            # during the first step we can identify the other home_base boxes
+            if self.current_step == 1:
+                self.otherHomeBase((x, y), direction)
 
         # we update the board_map with the distance to our home_base (from the new discovered free_squares)
         self.distanceMap()
+
+    # Calculate the position of the other home_base boxes (some of them)
+    def otherHomeBase(self, position, direction):
+        x, y = position
+        if 0 < x < self.shape[0] and 0 < y < self.shape[1]:
+            if self.home_base_position == (1, 1):
+                if direction in ("left", "up"):
+                    self.detectedHomeBase(position)
+            else:
+                if direction in ("left", "down"):
+                    self.detectedHomeBase(position)
+
+    # we replace the value of the position with the home_base value and we replace the opponent_home_base with its value
+    # we call back detectedHomeBase on the other box we know which are home_base too
+    def detectedHomeBase(self, position):
+        x, y = position
+        sym_x, sym_y = self.symmetric(position)
+        self.board_map[x][y] = self.map_values["home_base"]
+        self.board_map[sym_x][sym_y] = self.map_values["opponent_home_base"]
+
+        ### we look at the other positions (can be improved !!!)
+        (new_x, new_y) = tuple(np.array(position) + np.array(self.dir2coord("left")))  # new position
+        if 0 < new_x < self.shape[0] and 0 < new_y < self.shape[1]:
+            self.detectedHomeBase((new_x, new_y))
+        # we play at the top
+        if self.home_base_position == (1, 1):
+            (new_x, new_y) = tuple(np.array(position) + np.array(self.dir2coord("up")))  # new position
+            if 0 < new_x < self.shape[0] and 0 < new_y < self.shape[1]:
+                self.detectedHomeBase((new_x, new_y))
+        # we play at the bottom
+        else:
+            (new_x, new_y) = tuple(np.array(position) + np.array(self.dir2coord("down")))  # new position
+            if 0 < new_x < self.shape[0] and 0 < new_y < self.shape[1]:
+                self.detectedHomeBase((new_x, new_y))
 
     # Calculate the distance to the home-base of every point of the board_map
     def distanceMap(self):
@@ -212,20 +255,20 @@ class Strat3(Strategy):
                 self.minValue((x, y))
 
     # return the minimum value of the neighbors + 1, and call minValue on the neighbors which value is > minValue+1
-    def minValue(self, position):
+    def minValue(self, position):  # todo: problem with value 0 which is actually '0'
         (x, y) = position
         if self.board_map[x][y] != 0:
             return None
         minValue = np.inf
         # neighbors
-        v1 = self.board_map[x-1][y]  # up
-        v2 = self.board_map[x][y-1]  # left
-        v3 = self.board_map[x][y+1]  # right
-        v4 = self.board_map[x+1][y]  # bottom
+        v1 = self.board_map[x - 1][y]  # up
+        v2 = self.board_map[x][y - 1]  # left
+        v3 = self.board_map[x][y + 1]  # right
+        v4 = self.board_map[x + 1][y]  # bottom
 
         # we look at the neighbors
         for v in [v1, v2, v3, v4]:
-            if v < minValue-1 and v > 0:
+            if v < minValue - 1 and v > 0:
                 minValue = v + 1  # it takes 1 more step to achieve this position from the home_base
             if v == self.map_values["home_base"]:  # if we are next to the home_base (problem: opponent home_base)
                 minValue = 1
@@ -286,15 +329,16 @@ class Strat3(Strategy):
             # if there is no coin
             delta = -1
             if distance_coin != None:
-                delta = 1/distance_coin * (self.board_map[coin_x][coin_y] < energy - distance_coin)
+                delta = 1 / distance_coin * (self.board_map[coin_x][coin_y] < energy - distance_coin)
 
             # the heuristic function
-            value = self.hyperparameters["alpha"] * self.knowMap() \
-                    + self.hyperparameters["beta"] * observation.score \
+            value = self.hyperparameters["beta"] * observation.score \
                     + self.hyperparameters["gamma"] * observation.opponent_score \
                     + self.hyperparameters["delta"] * (1 - have_coin) * delta \
                     + self.hyperparameters["epsilon"] * have_coin * distance_home_base \
                     + self.hyperparameters["zeta"] * (distance_home_base > energy)
+            # self.hyperparameters["alpha"] * self.knowMap()  # problem: it's the same for every position
+            # self.hyperparameters = {"alpha": 1, "beta": 100, "gamma": -30, "delta": 1.2, "epsilon": 1.5, "zeta": -30}
             return "", value
         else:
             bestMove = ""
