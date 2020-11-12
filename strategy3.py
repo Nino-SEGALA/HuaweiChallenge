@@ -37,7 +37,7 @@ class Strat3(Strategy):
         self.directions = ['up', 'right', 'down', 'left']
         # Values of the different object in the board_map
         self.map_values = {"home_base": 'H', "opponent_home_base": 'O', "wall": 'W', "coin": 'C', "fake_coin": 'F',
-                           "robot": 'R', "free_square": 0, "unidentified": 'U'}  # other value?
+                           "robot": 'R', "free_square": 0, "unidentified": 'U', "unknown": 'X'}  # other value?
         # Depth of simulation for the best move
         self.depth = 3
         # Values for the best move todo: find the best hyperparameters
@@ -45,9 +45,10 @@ class Strat3(Strategy):
         # Initialization of the known map
         self.board_map = None  # Will be initialize during the step 1
         # Count at which step we are
-        self.step = 0
+        self.current_step = 0
         # Position of our home_base
         self.home_base_position = (1, 1)  # Will be adapted during the step 1
+        self.print("end init")
 
     def step(self, observation):
         ''' Called every time an observation has been received
@@ -66,9 +67,9 @@ class Strat3(Strategy):
         self.print('added_coins: {}'.format(observation.added_coins))
 
         # increase the step number
-        self.step += 1
+        self.current_step += 1
         # if we are at step 1 we identified our home_base
-        if self.step == 1:
+        if self.current_step == 1:
             self.positionHomeBase(observation)  # We play up or bottom ?
             self.board_map = self.initMap()  # Initialization of the board_map
 
@@ -102,7 +103,8 @@ class Strat3(Strategy):
 
             ### Choice of the best action
             self.print("bestMove evaluation")
-            move = self.bestMove(observation, robot)  # we get the best move
+            #move = self.bestMove(observation, robot)  # we get the best move
+            move = "right"
             self.print(move)
             action.move(robot_id, move)  # set move action
             action.detect(robot_id)  # we detect what we see
@@ -125,7 +127,7 @@ class Strat3(Strategy):
 
     # Creates the known-map of the board
     def initMap(self):
-        board_map = np.full(self.shape, np.inf)  # what is unknown is set to infinity
+        board_map = np.full(self.shape, self.map_values["unknown"])  # what is unknown is set to infinity
 
         ### side walls
         board_map[0:self.shape[0], 0] = self.map_values["wall"]  # left walls
