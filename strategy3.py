@@ -178,6 +178,8 @@ class Strat3(Strategy):
         # we store the nature of the object in the map
         self.board_map[x][y] = self.map_values[obj]
         self.board_map[sym_x][y] = self.map_values[obj]
+        
+        # todo call self.distanceMap
 
     # Calculate the distance to the home-base of every point of the board_map
     def distanceMap(self):
