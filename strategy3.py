@@ -118,7 +118,7 @@ class Strat3(Strategy):
     def positionHomeBase(self, observation):
         x, y = self.shape
         robot = observation.robot(0)  # we take the first robot
-        robot_x, robot_y = tuple(robot.position)
+        robot_x, robot_y = self.numpyPosition(tuple(robot.position))
         home_x, home_y = (1, 1)  # upper position
 
         # if the robot is at the top of the board, we have the upper home_base
@@ -158,7 +158,7 @@ class Strat3(Strategy):
         return self.shape[0] - position[0] - 1, position[1]
 
     # Return the symmetric object
-    def symmetricObject(self, object):
+    def symmetricObject(self, obj):
         self.map_values = {"home_base": 'H', "opponent_home_base": 'O', "wall": 'W', "coin": 'C', "fake_coin": 'F',
                            "robot": 'R', "free_square": 0, "unidentified": 'U', "unknown": 'X'}  # other value?
 
@@ -166,15 +166,15 @@ class Strat3(Strategy):
                      ["coin", "free_square"], ["fake_coin", "free_square"], ["robot", "free_square"],
                      ["free_square", "free_square"], ["unidentified", "unidentified"], ["unknown", "unknown"]]
         for (obj1, obj2) in symmetric:
-            if object == obj1:
+            if obj == obj1:
                 return obj2
         self.print("ERROR : symmetricObject, given object wasn't found")
         return None
 
     # Actualization of the board_map after the use of the radar
     def actualizeMap(self, robot, direction, radar):
-        robot_x, robot_y = tuple(robot.position)  # we get the position of the robot
-        dir_x, dir_y = self.dir2coord(direction)  # we get the direction (as a tuple)
+        robot_x, robot_y = self.numpyPosition(tuple(robot.position))  # we get the position of the robot
+        dir_x, dir_y = self.numpyPosition(self.dir2coord(direction))  # we get the direction (as a tuple)
 
         # we actualize the board_map with the value of the free_squares
         for i in range(radar.distance):
@@ -183,7 +183,7 @@ class Strat3(Strategy):
             sym_x, y = self.symmetric((x, y))  # the symmetric position
             # if we already know there is a free_square, it stores the distance to the home_base
             # so we don't want to overwrite it
-            if not type(self.board_map[x][y]) == int:
+            if not type(self.board_map[x][y]) == int:  #todo unknown/unindentified
                 obj = "free_square"
                 sym_obj = self.symmetricObject(obj)  # the symmetrical corresponding object
                 self.board_map[x][y] = self.map_values[obj]
@@ -207,18 +207,24 @@ class Strat3(Strategy):
             self.board_map[sym_x][y] = self.map_values[sym_obj]
             # during the first step we can identify the other home_base boxes
             if self.current_step == 1:
+                #self.print("iniiiit :")
+                #self.print("robot : ", robot_x, robot_y)
+                #self.print("home_base : ", x, y)
                 self.otherHomeBase((x, y), direction)
 
         # we update the board_map with the distance to our home_base (from the new discovered free_squares)
         self.distanceMap()
 
-    # Calculate the position of the other home_base boxes (some of them)
+    # If the given position corresponds to another home_base boxes we add it
+    # and calculate other home_base boxes (some of them)
     def otherHomeBase(self, position, direction):
         x, y = position
         if 0 < x < self.shape[0] and 0 < y < self.shape[1]:
+            # if we play at the top
             if self.home_base_position == (1, 1):
                 if direction in ("left", "up"):
                     self.detectedHomeBase(position)
+            # if we play at the bottom
             else:
                 if direction in ("left", "down"):
                     self.detectedHomeBase(position)
@@ -226,23 +232,24 @@ class Strat3(Strategy):
     # we replace the value of the position with the home_base value and we replace the opponent_home_base with its value
     # we call back detectedHomeBase on the other box we know which are home_base too
     def detectedHomeBase(self, position):
-        x, y = position
+        #self.print("detectedHomeBase : ", position)
+        x, y = position  # is already a numpyPosition
         sym_x, sym_y = self.symmetric(position)
         self.board_map[x][y] = self.map_values["home_base"]
         self.board_map[sym_x][sym_y] = self.map_values["opponent_home_base"]
 
         ### we look at the other positions (can be improved !!!)
-        (new_x, new_y) = tuple(np.array(position) + np.array(self.dir2coord("left")))  # new position
+        (new_x, new_y) = tuple(np.array(position) + np.array(self.numpyPosition(self.dir2coord("left"))))  # new position
         if 0 < new_x < self.shape[0] and 0 < new_y < self.shape[1]:
             self.detectedHomeBase((new_x, new_y))
         # we play at the top
-        if self.home_base_position == (1, 1):
-            (new_x, new_y) = tuple(np.array(position) + np.array(self.dir2coord("up")))  # new position
+        if self.home_base_position == (1, 1):  # todo other positions
+            (new_x, new_y) = tuple(np.array(position) + np.array(self.numpyPosition(self.dir2coord("up"))))  # new position
             if 0 < new_x < self.shape[0] and 0 < new_y < self.shape[1]:
                 self.detectedHomeBase((new_x, new_y))
         # we play at the bottom
         else:
-            (new_x, new_y) = tuple(np.array(position) + np.array(self.dir2coord("down")))  # new position
+            (new_x, new_y) = tuple(np.array(position) + np.array(self.numpyPosition(self.dir2coord("down"))))  # new position
             if 0 < new_x < self.shape[0] and 0 < new_y < self.shape[1]:
                 self.detectedHomeBase((new_x, new_y))
 
@@ -292,7 +299,7 @@ class Strat3(Strategy):
             except:
                 pass
 
-    # Convert a direction into the corresponding tuple
+    # Convert a direction into the corresponding tuple (in games-axis !!)
     def dir2coord(self, direction):
         ''' Convert direction to coordinates
 
@@ -319,9 +326,14 @@ class Strat3(Strategy):
             raise ValueError("Not a valid direction ({})".format(direction))
         return tuple(step)
 
+    # Convert a game-position, into a numpy_position
+    def numpyPosition(self, position):
+        x, y = position
+        return y, x
+
     # Find the best move for one robot
     def bestMove(self, observation, robot):
-        position = tuple(robot.position)
+        position = self.numpyPosition(tuple(robot.position))
         bestMove, value = self.bestMoveRec(observation, position, robot.energy, robot.has_item, self.depth)
         if bestMove == "":  # if no move lead to a finite value in bestMoveRec
             # choose random direction to move
@@ -333,7 +345,7 @@ class Strat3(Strategy):
     def bestMoveRec(self, observation, position, energy, have_coin, depth):
         # Leaf / we evaluate the board
         if depth == 0:
-            x, y = position
+            x, y = position  # already numpyPosition
             distance_home_base = self.distanceHomeBase(position)
             distance_coin, (coin_x, coin_y) = self.distanceCoin(position)
 
@@ -355,7 +367,7 @@ class Strat3(Strategy):
             bestMove = ""
             maxValue = -np.inf
             for move in self.directions:
-                (x, y) = tuple(np.array(position) + np.array(self.dir2coord(move)))  # new position
+                (x, y) = tuple(np.array(position) + np.array(self.numpyPosition(self.dir2coord(move))))  # new position
                 if self.board_map[x][y] == self.map_values["coin"]:  # if we collect a coin
                     have_coin = True
                 # we only go to known free_squares
@@ -371,7 +383,7 @@ class Strat3(Strategy):
 
     # Return the distance to our home_base
     def distanceHomeBase(self, position):
-        x, y = position
+        x, y = position  # already numpyPosition
         if self.board_map[x][y] == self.map_values["home_base"]:
             return 0
         dist = self.board_map[x][y]
@@ -396,7 +408,7 @@ class Strat3(Strategy):
 
     # Calculate the shortest distance to a coin
     def distanceCoin(self, position):
-        robot_x, robot_y = position
+        robot_x, robot_y = position  # already numpyPosition
         distance = -1  # distance to the nearest coin
         pos = (-1, -1)  # position of the nearest coin
         dist_map = np.full(self.shape, np.inf)
