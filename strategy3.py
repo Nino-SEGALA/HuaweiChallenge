@@ -109,8 +109,8 @@ class Strat3(Strategy):
             action.move(robot_id, move)  # set move action
             action.detect(robot_id)  # we detect what we see
 
-        #self.print(f"step {self.current_step} : board_map")
-        #self.print(self.board_map)
+        self.print(f"step {self.current_step} : board_map")
+        self.print(self.board_map)
 
         return action
 
@@ -151,29 +151,25 @@ class Strat3(Strategy):
         board_map[1][1] = self.map_values[home_base1]  # the upper home_base
         board_map[sym_x][sym_y] = self.map_values[home_base2]  # the bottom home_base
 
-        """ # Problem: we have no information about num_hob (number of home_base)
-        i = 0
-        x, y = (1, 1)
-        while i < self.num_hob:
-            sym_x, sym_y = self.symmetric((x, y))
-            board_map[x][y] = self.map_values[home_base1]
-            board_map[sym_x][sym_y] = self.map_values[home_base2]
-
-            # next step
-            i += 1
-            # if we just evaluate a home_base box stuck to the upper limit,
-            # the new home_base box will be stuck to the left border
-            if x == 1:
-                x, y = y+1, 1
-            # else the new home_base box will be up and right of the previous one
-            else:
-                x, y = x-1, y+1"""
-
         return board_map
 
     # Return the symmetric of position
     def symmetric(self, position):
         return self.shape[0] - position[0] - 1, position[1]
+
+    # Return the symmetric object
+    def symmetricObject(self, object):
+        self.map_values = {"home_base": 'H', "opponent_home_base": 'O', "wall": 'W', "coin": 'C', "fake_coin": 'F',
+                           "robot": 'R', "free_square": 0, "unidentified": 'U', "unknown": 'X'}  # other value?
+
+        symmetric = [["home_base", "opponent_home_base"], ["opponent_home_base", "home_base"], ["wall", "wall"],
+                     ["coin", "free_square"], ["fake_coin", "free_square"], ["robot", "free_square"],
+                     ["free_square", "free_square"], ["unidentified", "unidentified"], ["unknown", "unknown"]]
+        for (obj1, obj2) in symmetric:
+            if object == obj1:
+                return obj2
+        self.print("ERROR : symmetricObject, given object wasn't found")
+        return None
 
     # Actualization of the board_map after the use of the radar
     def actualizeMap(self, robot, direction, radar):
@@ -188,8 +184,10 @@ class Strat3(Strategy):
             # if we already know there is a free_square, it stores the distance to the home_base
             # so we don't want to overwrite it
             if not type(self.board_map[x][y]) == int:
-                self.board_map[x][y] = self.map_values["free_square"]
-                self.board_map[sym_x][y] = self.map_values["free_square"]
+                obj = "free_square"
+                sym_obj = self.symmetricObject(obj)  # the symmetrical corresponding object
+                self.board_map[x][y] = self.map_values[obj]
+                self.board_map[sym_x][y] = self.map_values[sym_obj]
 
         # position of the detected object
         x = robot_x + radar.distance * dir_x
@@ -204,8 +202,9 @@ class Strat3(Strategy):
                 obj = "free_square"
             if obj is None:  # if we didn't detect, the object is unidentified
                 obj = "unidentified"
+            sym_obj = self.symmetricObject(obj)  # the symmetrical corresponding object
             self.board_map[x][y] = self.map_values[obj]
-            self.board_map[sym_x][y] = self.map_values[obj]
+            self.board_map[sym_x][y] = self.map_values[sym_obj]
             # during the first step we can identify the other home_base boxes
             if self.current_step == 1:
                 self.otherHomeBase((x, y), direction)
