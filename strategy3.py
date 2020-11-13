@@ -48,7 +48,8 @@ class Strat3(Strategy):
         self.current_step = 0
         # Position of our home_base
         self.home_base_position = (1, 1)  # Will be adapted during the step 1
-        self.print("end init")
+        # Position of our robots
+        self.robots_position = [[] for r in range(self.num_robots)]
 
     def step(self, observation):
         ''' Called every time an observation has been received
@@ -89,7 +90,7 @@ class Strat3(Strategy):
         for robot_id in range(self.num_robots):
             # Get robot specific observation
             robot = observation.robot(robot_id)
-            # position = tuple(robot.position)
+            position = tuple(robot.position)
 
             ### Robot is penalized, do nothing
             if robot.penalty > 0:
@@ -106,6 +107,9 @@ class Strat3(Strategy):
             move = self.bestMove(observation, robot)  # we get the best move
             action.move(robot_id, move)  # set move action
             action.detect(robot_id)  # we detect what we see
+            # We actualize the position of our robot
+            new_x, new_y = np.array(self.numpyPosition(position)) + np.array(self.numpyPosition(self.dir2coord(move)))
+            self.robots_position[robot_id] = [new_x, new_y]
 
         #self.print(f"step {self.current_step} : board_map")
         #self.print(self.board_map)
@@ -179,13 +183,18 @@ class Strat3(Strategy):
             x = robot_x + i * dir_x
             y = robot_y + i * dir_y
             sym_x, y = self.symmetric((x, y))  # the symmetric position
+            bmxy = self.board_map[x][y]
             # if we already know there is a free_square, it stores the distance to the home_base
             # so we don't want to overwrite it
-            if not type(self.board_map[x][y]) == int:  #todo unknown/unindentified
-                obj = "free_square"
-                sym_obj = self.symmetricObject(obj)  # the symmetrical corresponding object
-                self.board_map[x][y] = self.map_values[obj]
-                self.board_map[sym_x][y] = self.map_values[sym_obj]
+            try:
+                v = int(bmxy)
+            except:
+                if bmxy not in [self.map_values["home_base"], self.map_values["opponent_home_base"],
+                                self.map_values["wall"]]:  # if it's not an immutable object
+                    obj = "free_square"
+                    sym_obj = self.symmetricObject(obj)  # the symmetrical corresponding object
+                    self.board_map[x][y] = self.map_values[obj]
+                    self.board_map[sym_x][y] = self.map_values[sym_obj]
 
         # position of the detected object
         x = robot_x + radar.distance * dir_x
@@ -233,17 +242,20 @@ class Strat3(Strategy):
         self.board_map[sym_x][sym_y] = self.map_values["opponent_home_base"]
 
         ### we look at the other positions (can be improved !!!)
-        (new_x, new_y) = tuple(np.array(position) + np.array(self.numpyPosition(self.dir2coord("left"))))  # new position
+        (new_x, new_y) = tuple(
+            np.array(position) + np.array(self.numpyPosition(self.dir2coord("left"))))  # new position
         if 0 < new_x < self.shape[0] and 0 < new_y < self.shape[1]:
             self.detectedHomeBase((new_x, new_y))
         # we play at the top
         if self.home_base_position == (1, 1):  # todo other positions
-            (new_x, new_y) = tuple(np.array(position) + np.array(self.numpyPosition(self.dir2coord("up"))))  # new position
+            (new_x, new_y) = tuple(
+                np.array(position) + np.array(self.numpyPosition(self.dir2coord("up"))))  # new position
             if 0 < new_x < self.shape[0] and 0 < new_y < self.shape[1]:
                 self.detectedHomeBase((new_x, new_y))
         # we play at the bottom
         else:
-            (new_x, new_y) = tuple(np.array(position) + np.array(self.numpyPosition(self.dir2coord("down"))))  # new position
+            (new_x, new_y) = tuple(
+                np.array(position) + np.array(self.numpyPosition(self.dir2coord("down"))))  # new position
             if 0 < new_x < self.shape[0] and 0 < new_y < self.shape[1]:
                 self.detectedHomeBase((new_x, new_y))
 
@@ -369,7 +381,9 @@ class Strat3(Strategy):
                 # we only go to known free_squares
                 try:
                     v = int(bmxy)
-                except:  # if it's not an int  # what with unknown / unidentified
+                    if [x, y] in self.robots_position:  # we never go where one of our robot stand
+                        return "", -np.inf
+                except:  # if it's not an int
                     if not (bmxy == self.map_values["home_base"] or bmxy == self.map_values["coin"]):
                         return "", -np.inf
                 # recursive call
@@ -449,12 +463,11 @@ class Strat3(Strategy):
             v = self.board_map[x][y]  # the value of the neighbor
             try:
                 v = int(v)  # we look if it's a free_square (if it is one we have the distance to our home_base)
-                if v > 0 and v < distance -1:
-                    distance = v+1
+                if v > 0 and v < distance - 1:
+                    distance = v + 1
             except:
                 pass
         return distance
-
 
     # Return the neighbors of a position
     def neighbors(self, position):
