@@ -292,18 +292,39 @@ class Simple(Strategy):
                 self.map[robot.position[1]][right_x] = self.object_map[obj.object]
                 for i in range(robot.position[0], right_x):
                     self.map[robot.position[1]][i] = 'O'
+
+                # if obj.object == 'wall':
+                #     self.map[self.shape[0] - 1 - robot.position[1]][right_x] = self.object_map[obj.object]
+                #     for i in range(robot.position[0], right_x):
+                #         self.map[self.shape[0] - 1 - robot.position[1]][i] = 'O'
+
             if left_x is not None:
                 self.map[robot.position[1]][left_x] = self.object_map[obj.object]
                 for i in range(robot.position[0], left_x, -1):
                     self.map[robot.position[1]][i] = 'O'
+
+                if obj.object == 'wall':
+                    self.map[self.shape[0] - 1 - robot.position[1]][left_x] = self.object_map[obj.object]
+                    for i in range(robot.position[0], left_x, -1):
+                        self.map[self.shape[0] - 1 - robot.position[1]][i] = 'O'
+
             if top_y is not None:
                 self.map[top_y][robot.position[0]] = self.object_map[obj.object]
                 for i in range(robot.position[1], top_y, -1):
                     self.map[i][robot.position[0]] = 'O'
+
+                if obj.object == 'wall':
+                    self.map[self.shape[0] - 1 - top][robot.position[0]] = self.object_map[obj.object]
+
+                
             if bottom_y is not None:
                 self.map[bottom_y][robot.position[0]] = self.object_map[obj.object]
                 for i in range(robot.position[1], bottom_y):
                     self.map[i][robot.position[0]] = 'O'
+            
+            self.print(self.map)
+            self.print()
+                    
 
     def print_map(self):
         for i in range(self.shape[0]):
