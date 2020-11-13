@@ -41,7 +41,7 @@ class Strat3(Strategy):
         # Depth of simulation for the best move
         self.depth = 3
         # Values for the best move todo: find the best hyperparameters
-        self.hyperparameters = {"alpha": 1, "beta": 100, "gamma": -30, "delta": 1.2, "epsilon": 100, "zeta": -30}
+        self.hyperparameters = {"alpha": 1, "beta": 100, "gamma": -30, "delta": 1.2, "epsilon": -100, "zeta": -30}
         # Initialization of the known map
         self.board_map = None  # Will be initialize during the step 1
         # Count at which step we are
@@ -103,9 +103,7 @@ class Strat3(Strategy):
 
             ### Choice of the best action
             self.print("bestMove evaluation")
-            # move = self.bestMove(observation, robot)  # we get the best move
-            move = "right"
-            self.print(move)
+            move = self.bestMove(observation, robot)  # we get the best move
             action.move(robot_id, move)  # set move action
             action.detect(robot_id)  # we detect what we see
 
@@ -344,11 +342,12 @@ class Strat3(Strategy):
             x, y = position  # already numpyPosition
             distance_home_base = self.distanceHomeBase(position)
             distance_coin, (coin_x, coin_y) = self.distanceCoin(position)
+            distance_coin_home_base = self.distanceCoinHomeBase((coin_x, coin_y))
 
             # if there is no coin
             delta = -1
             if distance_coin != None:
-                delta = 1 / distance_coin * (self.board_map[coin_x][coin_y] < energy - distance_coin)
+                delta = 1 / distance_coin * (distance_coin_home_base < energy - distance_coin)
 
             # the heuristic function
             value = self.hyperparameters["beta"] * observation.score \
@@ -364,12 +363,15 @@ class Strat3(Strategy):
             maxValue = -np.inf
             for move in self.directions:
                 (x, y) = tuple(np.array(position) + np.array(self.numpyPosition(self.dir2coord(move))))  # new position
-                if self.board_map[x][y] == self.map_values["coin"]:  # if we collect a coin
+                bmxy = self.board_map[x][y]
+                if bmxy == self.map_values["coin"]:  # if we collect a coin
                     have_coin = True
                 # we only go to known free_squares
-                if self.board_map[x][y] < 0 and not (self.board_map[x][y] == self.map_values["home_base"]) \
-                        or self.board_map[x][y] == np.inf:
-                    return "", -np.inf
+                try:
+                    v = int(bmxy)
+                except:  # if it's not an int  # what with unknown / unidentified
+                    if not (bmxy == self.map_values["home_base"] or bmxy == self.map_values["coin"]):
+                        return "", -np.inf
                 # recursive call
                 bstMv, value = self.bestMoveRec(observation, (x, y), energy - 1 - have_coin, have_coin, depth - 1)
                 if value > maxValue:
@@ -380,8 +382,10 @@ class Strat3(Strategy):
     # Return the distance to our home_base
     def distanceHomeBase(self, position):
         x, y = position  # already numpyPosition
-        if self.board_map[x][y] == self.map_values["home_base"]:
+        if self.board_map[x][y] == self.map_values["home_base"]:  # we look at our home_base
             return 0
+        if self.board_map[x][y] == self.map_values["coin"]:  # we look at a coin
+            return self.distanceCoinHomeBase(position)
         dist = self.board_map[x][y]
         try:
             distance = int(dist)
@@ -435,6 +439,22 @@ class Strat3(Strategy):
                     dist_map[i][j] = dist + 1
 
         return distance, pos
+
+    # Calculate the distance between the coin and our home_base
+    def distanceCoinHomeBase(self, position):
+        coin_x, coin_y = position  # already in numpyPosition
+        distance = np.inf
+        # look at the neighbors and adjust their distance
+        for (x, y) in self.neighbors(position):
+            v = self.board_map[x][y]  # the value of the neighbor
+            try:
+                v = int(v)  # we look if it's a free_square (if it is one we have the distance to our home_base)
+                if v > 0 and v < distance -1:
+                    distance = v+1
+            except:
+                pass
+        return distance
+
 
     # Return the neighbors of a position
     def neighbors(self, position):
