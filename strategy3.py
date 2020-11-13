@@ -109,8 +109,8 @@ class Strat3(Strategy):
             action.move(robot_id, move)  # set move action
             action.detect(robot_id)  # we detect what we see
 
-        self.print(f"step {self.current_step} : board_map")
-        self.print(self.board_map)
+        #self.print(f"step {self.current_step} : board_map")
+        #self.print(self.board_map)
 
         return action
 
@@ -207,9 +207,6 @@ class Strat3(Strategy):
             self.board_map[sym_x][y] = self.map_values[sym_obj]
             # during the first step we can identify the other home_base boxes
             if self.current_step == 1:
-                #self.print("iniiiit :")
-                #self.print("robot : ", robot_x, robot_y)
-                #self.print("home_base : ", x, y)
                 self.otherHomeBase((x, y), direction)
 
         # we update the board_map with the distance to our home_base (from the new discovered free_squares)
@@ -232,7 +229,6 @@ class Strat3(Strategy):
     # we replace the value of the position with the home_base value and we replace the opponent_home_base with its value
     # we call back detectedHomeBase on the other box we know which are home_base too
     def detectedHomeBase(self, position):
-        #self.print("detectedHomeBase : ", position)
         x, y = position  # is already a numpyPosition
         sym_x, sym_y = self.symmetric(position)
         self.board_map[x][y] = self.map_values["home_base"]
