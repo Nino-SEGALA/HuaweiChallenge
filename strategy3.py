@@ -109,8 +109,8 @@ class Strat3(Strategy):
             action.move(robot_id, move)  # set move action
             action.detect(robot_id)  # we detect what we see
 
-        self.print(f"step {self.current_step} : board_map")
-        self.print(self.board_map)
+        #self.print(f"step {self.current_step} : board_map")
+        #self.print(self.board_map)
 
         return action
 
@@ -257,7 +257,8 @@ class Strat3(Strategy):
     # return the minimum value of the neighbors + 1, and call minValue on the neighbors which value is > minValue+1
     def minValue(self, position):  # todo: problem with value 0 which is actually '0'
         (x, y) = position
-        if self.board_map[x][y] != 0:
+        # if the position doesn't correspond to a free_square
+        if self.board_map[x][y] != str(self.map_values["free_square"]):
             return None
         minValue = np.inf
         # neighbors
@@ -268,18 +269,29 @@ class Strat3(Strategy):
 
         # we look at the neighbors
         for v in [v1, v2, v3, v4]:
-            if v < minValue - 1 and v > 0:
-                minValue = v + 1  # it takes 1 more step to achieve this position from the home_base
-            if v == self.map_values["home_base"]:  # if we are next to the home_base (problem: opponent home_base)
-                minValue = 1
+            # we try to convert the String into an int (distance to home-base)
+            try:
+                v = int(v)
+                if v < minValue - 1 and v > 0:
+                    minValue = v + 1  # it takes 1 more step to achieve this position from the home_base
+            except:
+                # we are next to our home_base
+                if v == self.map_values["home_base"]:
+                    minValue = 1
 
-        # instantiation of the position's distance
-        self.board_map[x][y] = minValue
+        # instantiation of the position's distance if it has change
+        if minValue < np.inf:
+            self.board_map[x][y] = str(minValue)
 
         # we adjust the value of the distance of the neighbors in the case it has to be
         for (v, pos) in [(v1, (x - 1, y)), (v2, (x, y - 1)), (v3, (x, y + 1)), (v4, (x + 1, y + 1))]:
-            if v < np.inf and v > minValue + 1:
-                self.minValue(pos)
+            try:
+                v = int(v)
+                # if a neighbor has a wrong distance_value to our home_base, we actualize it
+                if v < np.inf and v > minValue + 1:
+                    self.minValue(pos)
+            except:
+                pass
 
     # Convert a direction into the corresponding tuple
     def dir2coord(self, direction):
@@ -323,7 +335,7 @@ class Strat3(Strategy):
         # Leaf / we evaluate the board
         if depth == 0:
             x, y = position
-            distance_home_base = self.board_map[x][y]
+            distance_home_base = self.distanceHomeBase(position)
             distance_coin, (coin_x, coin_y) = self.distanceCoin(position)
 
             # if there is no coin
@@ -357,6 +369,20 @@ class Strat3(Strategy):
                     bestMove = move
                     maxValue = value
         return bestMove, value
+
+    # Return the distance to our home_base
+    def distanceHomeBase(self, position):
+        x, y = position
+        if self.board_map[x][y] == self.map_values["home_base"]:
+            return 0
+        dist = self.board_map[x][y]
+        try:
+            distance = int(dist)
+            if distance == 0:
+                self.print("ERROR : distanceHomeBase, the distance wasn't evaluated")
+            return distance
+        except:
+            self.print("ERROR : distanceHomeBase, given position doesn't correspond to a free_square")
 
     # Return the proportion of the board_map that we know
     def knowMap(self):
