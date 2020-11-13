@@ -89,22 +89,22 @@ class Simple(Strategy):
 
             # If home not found
             if self.look_straight(robot, 'left')[0] == 'X':
-                self.scan(self.scout_id, observation, action, 'left')
+                self.scan(self.scout_id, observation, action)
                 self.print("SCANNING LEFT")
                 return action
             
             if self.look_straight(robot, 'down')[0] == 'X':
-                self.scan(self.scout_id, observation, action, 'down')
+                self.scan(self.scout_id, observation, action)
                 self.print("SCANNING DOWN")
                 return action
 
             if self.look_straight(robot, 'left')[0] == 'X':
-                self.scan(self.scout_id, observation, action, 'left')
+                self.scan(self.scout_id, observation, action)
                 self.print("SCANNING LEFT")
                 return action
 
             if self.look_straight(robot, 'up')[0] == 'X':
-                self.scan(self.scout_id, observation, action, 'up')
+                self.scan(self.scout_id, observation, action)
                 self.print("SCANNING UP")
                 return action
         
@@ -112,25 +112,29 @@ class Simple(Strategy):
         # Scan
         # Scan right only if the robot is not in the right edge (save 2 timesteps)
         if not robot_state['going_for_coin']:
-            if self.look_straight(robot, 'right')[0] == 'X' and robot.position[0] < self.shape[1] - 2:
-                self.scan(self.scout_id, observation, action, 'right')
-                self.print("SCANNING RIGHT")
+            if ((self.look_straight(robot, 'right')[0] == 'X' and robot.position[0] < self.shape[1] - 2)
+                or (self.look_straight(robot, 'down')[0] == 'X' and robot.position[1] < self.shape[0] - 2)
+                or (self.look_straight(robot, 'left')[0] == 'X' and robot.position[0] > 1)
+                or (self.look_straight(robot, 'up')[0] == 'X' and robot.position[1] > 2)):
+
+                self.scan(self.scout_id, observation, action)
+                self.print("SCANNING...")
                 return action
 
-            if self.look_straight(robot, 'down')[0] == 'X' and robot.position[1] < self.shape[0] - 2:
-                self.scan(self.scout_id, observation, action, 'down')
-                self.print("SCANNING DOWN")
-                return action
+            # if self.look_straight(robot, 'down')[0] == 'X' and robot.position[1] < self.shape[0] - 2:
+            #     self.scan(self.scout_id, observation, action, 'down')
+            #     self.print("SCANNING DOWN")
+            #     return action
 
-            if self.look_straight(robot, 'left')[0] == 'X' and robot.position[0] > 1:
-                self.scan(self.scout_id, observation, action, 'left')
-                self.print("SCANNING LEFT")
-                return action
+            # if self.look_straight(robot, 'left')[0] == 'X' and robot.position[0] > 1:
+            #     self.scan(self.scout_id, observation, action, 'left')
+            #     self.print("SCANNING LEFT")
+            #     return action
 
-            if self.look_straight(robot, 'up')[0] == 'X' and robot.position[1] > 2:
-                self.scan(self.scout_id, observation, action, 'up')
-                self.print("SCANNING UP")
-                return action
+            # if self.look_straight(robot, 'up')[0] == 'X' and robot.position[1] > 2:
+            #     self.scan(self.scout_id, observation, action, 'up')
+            #     self.print("SCANNING UP")
+            #     return action
 
         # If coins spotted, prioritize the coin with smallest distance and just go for it!
         priority_direction = self.get_direction_priority_when_coin_spot(robot)
@@ -266,64 +270,50 @@ class Simple(Strategy):
         if direction == 'down':
             return self.map[robot.position[1] + 1][robot.position[0]]
 
-    def scan(self, robot_id, observation, action, direction):
+    def scan(self, robot_id, observation, action):
         robot = observation.robot(robot_id)
+
+        # Check whether detection switch is ON or OFF. Switch it ON
         if not self.robot_state[robot_id]['detection_enabled']:
             action.detect(robot_id)
             self.robot_state[robot_id]['detection_enabled'] = True
             return
         
         self.robot_state[robot_id]['detection_enabled'] = False
-        obj = observation.radar(robot_id, direction)
+        obj_right = observation.radar(robot_id, 'right')
+        obj_left = observation.radar(robot_id, 'left')
+        obj_down = observation.radar(robot_id, 'down')
+        obj_up = observation.radar(robot_id, 'up')
         
         right_x = left_x = top_y = bottom_y = None
 
-        if direction == 'right':
-            right_x = robot.position[0] + obj.distance
-        elif direction == 'left':
-            left_x = robot.position[0] - obj.distance
-        elif direction == 'up':
-            top_y = robot.position[1] - obj.distance
-        elif direction == 'down':
-            bottom_y = robot.position[1] + obj.distance
+        right_x = robot.position[0] + obj_right.distance
+        left_x = robot.position[0] - obj_left.distance
+        top_y = robot.position[1] - obj_up.distance
+        bottom_y = robot.position[1] + obj_down.distance
 
-        if obj.object:
-            if right_x is not None:
-                self.map[robot.position[1]][right_x] = self.object_map[obj.object]
-                for i in range(robot.position[0], right_x):
-                    self.map[robot.position[1]][i] = 'O'
+        if obj_right.object is not None:
+            self.map[robot.position[1]][right_x] = self.object_map[obj_right.object]
+            for i in range(robot.position[0], right_x):
+                self.map[robot.position[1]][i] = 'O'
 
-                # if obj.object == 'wall':
-                #     self.map[self.shape[0] - 1 - robot.position[1]][right_x] = self.object_map[obj.object]
-                #     for i in range(robot.position[0], right_x):
-                #         self.map[self.shape[0] - 1 - robot.position[1]][i] = 'O'
+        if obj_left.object is not None:
+            self.map[robot.position[1]][left_x] = self.object_map[obj_left.object]
+            for i in range(robot.position[0], left_x, -1):
+                self.map[robot.position[1]][i] = 'O'
 
-            if left_x is not None:
-                self.map[robot.position[1]][left_x] = self.object_map[obj.object]
-                for i in range(robot.position[0], left_x, -1):
-                    self.map[robot.position[1]][i] = 'O'
+        if obj_up.object is not None:
+            self.map[top_y][robot.position[0]] = self.object_map[obj_up.object]
+            for i in range(robot.position[1], top_y, -1):
+                self.map[i][robot.position[0]] = 'O'
 
-                if obj.object == 'wall':
-                    self.map[self.shape[0] - 1 - robot.position[1]][left_x] = self.object_map[obj.object]
-                    for i in range(robot.position[0], left_x, -1):
-                        self.map[self.shape[0] - 1 - robot.position[1]][i] = 'O'
-
-            if top_y is not None:
-                self.map[top_y][robot.position[0]] = self.object_map[obj.object]
-                for i in range(robot.position[1], top_y, -1):
-                    self.map[i][robot.position[0]] = 'O'
-
-                if obj.object == 'wall':
-                    self.map[self.shape[0] - 1 - top][robot.position[0]] = self.object_map[obj.object]
-
-                
-            if bottom_y is not None:
-                self.map[bottom_y][robot.position[0]] = self.object_map[obj.object]
-                for i in range(robot.position[1], bottom_y):
-                    self.map[i][robot.position[0]] = 'O'
-            
-            self.print(self.map)
-            self.print()
+        if obj_down is not None:
+            self.map[bottom_y][robot.position[0]] = self.object_map[obj_down.object]
+            for i in range(robot.position[1], bottom_y):
+                self.map[i][robot.position[0]] = 'O'
+        
+        self.print(self.map)
+        self.print()
                     
 
     def print_map(self):
