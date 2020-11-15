@@ -1,6 +1,7 @@
 import numpy as np
 from robot_explorers import Strategy
 import random
+import copy
 
 class Simple(Strategy):
     '''
@@ -41,7 +42,7 @@ class Simple(Strategy):
         for robot_id in range(self.num_robots):
             self.robot_state[robot_id] = {
                 'detection_enabled': False,
-                'priority_path' : [], # If robot has to go to a coin or come back to home base, we call get_path()
+                'optimal_path_to_home' : [],
                 'priority_path_index': None,
                 'role': 'W',
                 'going_for_coin': False,
@@ -65,43 +66,47 @@ class Simple(Strategy):
         robot = observation.robot(robot_id)
         robot_state = self.robot_state[robot_id]
 
-        if robot.has_item:
+        if robot.has_item and len(robot_state['optimal_path_to_home']) == 0:
+            self.get_path(robot_id, robot.position, (1, 2))
+            
+        if robot.has_item and len(robot_state['optimal_path_to_home']) > 0:
             robot_state['going_for_coin'] = False
-            if len(robot_state['traversed_path_from_home_base']) > 0:
-                direction_to_move = robot_state['traversed_path_from_home_base'][0]
-                self.print("HOME BASE CALLING", direction_to_move)
-                robot_state['traversed_path_from_home_base'].pop(0)
-                action.move(robot_id, direction_to_move)
-                return True
+            
+            # if len(robot_state['traversed_path_from_home_base']) > 0:
+            direction_to_move = robot_state['optimal_path_to_home'][0]
+            self.print("HOME BASE CALLING", direction_to_move)
+            robot_state['optimal_path_to_home'].pop(0)
+            action.move(robot_id, direction_to_move)
+            return True
 
             # Last step to home
-            if self.look_straight(robot, 'left')[0] == 'H':
-                action.move(robot_id, 'left')
-                return True
-            if self.look_straight(robot, 'right')[0] == 'H':
-                action.move(robot_id, 'right')
-                return True
-            if self.look_straight(robot, 'up')[0] == 'H':
-                action.move(robot_id, 'up')
-                return True
-            if self.look_straight(robot, 'down')[0] == 'H':
-                action.move(robot_id, 'down')
-                return True
+            # if self.look_straight(robot, 'left')[0] == 'H':
+            #     action.move(robot_id, 'left')
+            #     return True
+            # if self.look_straight(robot, 'right')[0] == 'H':
+            #     action.move(robot_id, 'right')
+            #     return True
+            # if self.look_straight(robot, 'up')[0] == 'H':
+            #     action.move(robot_id, 'up')
+            #     return True
+            # if self.look_straight(robot, 'down')[0] == 'H':
+            #     action.move(robot_id, 'down')
+            #     return True
 
             # If home not found
-            self.scan(robot_id, observation, action)
-            if self.look_straight(robot, 'left')[0] == 'H':
-                action.move(robot_id, 'left')
-                return True
-            if self.look_straight(robot, 'right')[0] == 'H':
-                action.move(robot_id, 'right')
-                return True
-            if self.look_straight(robot, 'up')[0] == 'H':
-                action.move(robot_id, 'up')
-                return True
-            if self.look_straight(robot, 'down')[0] == 'H':
-                action.move(robot_id, 'down')
-                return True
+            # self.scan(robot_id, observation, action)
+            # if self.look_straight(robot, 'left')[0] == 'H':
+            #     action.move(robot_id, 'left')
+            #     return True
+            # if self.look_straight(robot, 'right')[0] == 'H':
+            #     action.move(robot_id, 'right')
+            #     return True
+            # if self.look_straight(robot, 'up')[0] == 'H':
+            #     action.move(robot_id, 'up')
+            #     return True
+            # if self.look_straight(robot, 'down')[0] == 'H':
+            #     action.move(robot_id, 'down')
+            #     return True
         
         return False
 
@@ -352,18 +357,18 @@ class Simple(Strategy):
             self.map[bottom_y][robot.position[0]] = self.object_map[obj_down.object]
             for i in range(robot.position[1], bottom_y):
                 self.map[i][robot.position[0]] = 'O'
-        
                     
 
     def print_map(self):
+        self.print("PRINTING MAP")
         for i in range(self.shape[0]):
             self.print(self.map[i])
 
-    def get_path(self, start, end):
-        a = self.map
+    def get_path(self, robot_id, start, end):
+        a = copy.deepcopy(self.map)
         for i in range(len(a)):
             for j in range(len(a[i])):
-                if a[i][j] == 'O':
+                if a[i][j] == 'O' or a[i][j] == 'H':
                     a[i][j] = 0
                 else:
                     a[i][j] = 1
@@ -373,18 +378,17 @@ class Simple(Strategy):
             m.append([])
             for j in range(len(a[i])):
                 m[-1].append(0)
-        i,j = start
+        j, i = start
         m[i][j] = 1
 
         k = 0
-
-        self.print(m)
-        return
+        
         while m[end[0]][end[1]] == 0:
             k += 1
             for i in range(len(m)):
                 for j in range(len(m[i])):
                     if m[i][j] == k:
+                        self.print("FOUND K AT", (i, j))
                         if i>0 and m[i-1][j] == 0 and a[i-1][j] == 0:
                             m[i-1][j] = k + 1
                         if j>0 and m[i][j-1] == 0 and a[i][j-1] == 0:
@@ -394,7 +398,7 @@ class Simple(Strategy):
                         if j<len(m[i])-1 and m[i][j+1] == 0 and a[i][j+1] == 0:
                             m[i][j+1] = k + 1
         
-        self.print("HERE")
+        self.print("MAP", m)
 
 
         i, j = end
@@ -419,7 +423,6 @@ class Simple(Strategy):
                 k -= 1
 
         path.reverse()
-        self.print(path)
 
         # Get Moves
         moves = []
@@ -434,7 +437,7 @@ class Simple(Strategy):
             elif path[i+1][1] < path[i][1]: # left
                 moves.append('left')
 
-        self.print(moves)
+        self.robot_state[robot_id]['optimal_path_to_home'] = moves
 
         
 # Run strategy
