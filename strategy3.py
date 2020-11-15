@@ -267,7 +267,7 @@ class Strat3(Strategy):
                 self.minValue((x, y))
 
     # return the minimum value of the neighbors + 1, and call minValue on the neighbors which value is > minValue+1
-    def minValue(self, position):  # todo: problem with value 0 which is actually '0'
+    def minValue(self, position):
         (x, y) = position
         # if the position doesn't correspond to a free_square
         if self.board_map[x][y] != str(self.map_values["free_square"]):
