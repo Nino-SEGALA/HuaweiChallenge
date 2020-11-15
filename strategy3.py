@@ -50,6 +50,10 @@ class Strat3(Strategy):
         self.home_base_position = (1, 1)  # Will be adapted during the step 1
         # Position of our robots
         self.robots_position = [[] for r in range(self.num_robots)]
+        # If the robot has a specific path to follow
+        self.path = [[] for r in range(self.num_robots)]
+        # If the robot reserve a coin for him (and will search it) | we stock the position of the coin
+        self.robot_coin = [(-1, -1) for r in range(self.num_robots)]
 
     def step(self, observation):
         ''' Called every time an observation has been received
@@ -104,7 +108,8 @@ class Strat3(Strategy):
 
             ### Choice of the best action
             self.print("bestMove evaluation")
-            move = self.bestMove(observation, robot)  # we get the best move
+            #move = self.bestMove(observation, robot)  # we get the best move
+            move = self.nextMove(observation, robot_id)  # we get the next move
             action.move(robot_id, move)  # set move action
             action.detect(robot_id)  # we detect what we see
             # We actualize the position of our robot
@@ -329,6 +334,7 @@ class Strat3(Strategy):
         }
         step = switch.get(direction, None)
         if step is None:
+            self.print("dir2coord : ", direction)
             raise ValueError("Not a valid direction ({})".format(direction))
         return tuple(step)
 
@@ -353,7 +359,7 @@ class Strat3(Strategy):
         if depth == 0:
             x, y = position  # already numpyPosition
             distance_home_base = self.distanceHomeBase(position)
-            distance_coin, (coin_x, coin_y) = self.distanceCoin(position)
+            distance_coin, (coin_x, coin_y), path = self.distanceCoin(position)
             distance_coin_home_base = self.distanceCoinHomeBase((coin_x, coin_y))
 
             # if there is no coin
@@ -426,8 +432,9 @@ class Strat3(Strategy):
         distance = -1  # distance to the nearest coin
         pos = (-1, -1)  # position of the nearest coin
         dist_map = np.full(self.shape, np.inf)
-        dist_map[robot_x][robot_y] = 0
-        squares = []
+        dist_map[robot_x][robot_y] = 0  # distance from our robot to itself
+        squares = []  # list of the squares/boxes that will be evaluated
+        path = []
 
         # look at the neighbors and adjust their distance
         for (x, y) in self.neighbors(position):
@@ -437,14 +444,16 @@ class Strat3(Strategy):
         # searching for the nearest coin
         while distance == -1:
             if len(squares) == 0:
-                return None, (-1, -1)
+                #return -1, (-1, -1), []
+                break
             x, y = squares.pop(0)  # BFS
             dist = dist_map[x][y]
             # if there is a coin
             if self.board_map[x][y] == self.map_values["coin"]:
-                distance = dist
-                pos = (x, y)
-                break
+                if (x, y) not in self.robot_coin:  # if the coin isn't yet reserved by another robot
+                    distance = dist
+                    pos = (x, y)
+                    break
             nghb = self.neighbors((x, y))
             for (i, j) in nghb:
                 # if we don't have already visit it
@@ -452,7 +461,20 @@ class Strat3(Strategy):
                     squares.append((i, j))
                     dist_map[i][j] = dist + 1
 
-        return distance, pos
+        # the path from the coin to the robot
+        if pos != (-1, -1):  # if a coin were found
+            path.append(pos)  # we add the coin's position
+            while path[-1] != position:  # the path is incomplete (don't reach the robot yet)
+                x, y = path[-1]
+                nghb = self.neighbors(path[-1])  # neighbors of the last square
+                for (i, j) in nghb:
+                    if dist_map[i][j] == dist_map[x][y]-1:  # we find the path to the robot
+                        path.append((i, j))
+                        break
+            path.pop()  # we delete the position of the robot of the path
+            path.reverse()  # we reverse it to have the path from the robot to the coin
+
+        return distance, pos, path
 
     # Calculate the distance between the coin and our home_base
     def distanceCoinHomeBase(self, position):
@@ -482,6 +504,96 @@ class Strat3(Strategy):
         if y < self.shape[1] - 2:
             nghb.append((x, y + 1))
         return nghb
+
+    # evaluate the next move of the robot
+    def nextMove(self, observation, robot_id):
+        # Get robot specific observation
+        robot = observation.robot(robot_id)
+        position = tuple(robot.position)
+
+        # if the robot has no specific path, we look if we can assign one to it
+        if self.path[robot_id] == []:
+            # the robot has a coin but doesn't have the path to go home -> we assign the path to go to the home_base
+            if robot.has_item:
+                path = self.pathHomeBase(position)
+                if path != None:  # should be the case since the robot is on a valid position
+                    self.path[robot_id] = path
+
+            # if the robot has no coin, we look if he can search a free coin (not already assigned to another robot)
+            else:
+                dist, pos, path = self.distanceCoin(position)
+                if dist > 0:  # if we found a free coin
+                    self.path[robot_id] = path
+
+        # if the robot should follow a specific path
+        if self.path[robot_id] != []:
+            next_position = self.path[robot_id].pop(0)  # get the next position and remove it from path
+            move = self.coord2dir(position, next_position)  # the move to go to next_position
+            return move  # we return the move corresponding to the path the robot has to follow
+
+        # no path and no coins to search todo Exploration
+
+        # choose random direction to move
+        move = np.random.choice(list(self.directions))
+        return move
+
+        #return None  # should not happen
+
+    # gives the move to go to the goal
+    def coord2dir(self, pos, goal):
+        ''' Convert coordinates to direction
+
+            Args:
+                pos (tuple|list|np.array):
+                    Container with x,y coordinates of start position
+                goal (tuple|list|np.array):
+                    Container with x,y coordinates of goal position
+
+            Returns:
+                actions (str): The direction to use in action
+
+            Raises:
+                ValueError: Starting position and goal are not adjacent
+        '''
+        if pos == goal:
+            return None
+        elif pos[0] == goal[0]:
+            if pos[1] > goal[1]:
+                return "up"
+            else:
+                return "down"
+        elif pos[1] == goal[1]:
+            if pos[0] > goal[0]:
+                return "left"
+            else:
+                return "right"
+        else:
+            raise ValueError("Starting position and goal are not adjacent")
+
+    # the path to our home_base
+    def pathHomeBase(self, position):
+        x, y = position
+        path = []
+        while self.board_map[x][y] != self.map_values["home_base"]:
+            dist = self.board_map[x][y]
+            try:
+                distance = int(dist)  # we try to convert it to an int
+                nghb = self.neighbors((x, y))  # the neighbors of (x, y)
+                for (i, j) in nghb:
+                    dist2 = self.board_map[i][j]
+                    try:
+                        distance2 = int(dist2)
+                        if distance2 == distance-1:
+                            path.append((i, j))
+                            x, y = i, j  # we change the current position
+                            break
+                    except:
+                        pass
+            except:
+                self.print("ERROR : pathHomeBase, the position doesn't correspond to a free_square")
+                return []
+        return path
+
 
 
 # Run strategy
