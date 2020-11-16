@@ -9,6 +9,7 @@ Authors:
 
 import numpy as np
 from robot_explorers import Strategy
+import sys
 
 
 class Strat3(Strategy):
@@ -474,6 +475,8 @@ class Strat3(Strategy):
             path.pop()  # we delete the position of the robot of the path
             path.reverse()  # we reverse it to have the path from the robot to the coin
 
+        # self.print("distanceCoin : ", position, pos, path)
+
         return distance, pos, path
 
     # Calculate the distance between the coin and our home_base
@@ -509,7 +512,7 @@ class Strat3(Strategy):
     def nextMove(self, observation, robot_id):
         # Get robot specific observation
         robot = observation.robot(robot_id)
-        position = tuple(robot.position)
+        position = self.numpyPosition(tuple(robot.position))  # get the position of the robot
 
         # if the robot has no specific path, we look if we can assign one to it
         if self.path[robot_id] == []:
@@ -518,16 +521,19 @@ class Strat3(Strategy):
                 path = self.pathHomeBase(position)
                 if path != None:  # should be the case since the robot is on a valid position
                     self.path[robot_id] = path
+                    self.print("pathHomeBase-home_base: ", position, path, robot_id, self.path)
 
             # if the robot has no coin, we look if he can search a free coin (not already assigned to another robot)
             else:
                 dist, pos, path = self.distanceCoin(position)
                 if dist > 0:  # if we found a free coin
                     self.path[robot_id] = path
+                    self.print("pathHomeBase_coin: ", position, path, robot_id, self.path)
 
         # if the robot should follow a specific path
         if self.path[robot_id] != []:
             next_position = self.path[robot_id].pop(0)  # get the next position and remove it from path
+            self.print("path : ", position, next_position, self.path[robot_id], robot_id, self.path)
             move = self.coord2dir(position, next_position)  # the move to go to next_position
             return move  # we return the move corresponding to the path the robot has to follow
 
@@ -555,6 +561,10 @@ class Strat3(Strategy):
             Raises:
                 ValueError: Starting position and goal are not adjacent
         '''
+        # position inverted like always :/
+        pos = pos[1], pos[0]
+        goal = goal[1], goal[0]
+
         if pos == goal:
             return None
         elif pos[0] == goal[0]:
@@ -568,6 +578,11 @@ class Strat3(Strategy):
             else:
                 return "right"
         else:
+            self.print()
+            self.print(pos, goal)
+            self.print(self.board_map)
+            sys.exit(1)  # stop the program
+
             raise ValueError("Starting position and goal are not adjacent")
 
     # the path to our home_base
@@ -594,6 +609,8 @@ class Strat3(Strategy):
                 return []
         return path
 
+# think about this problems after
+# delete coin_position in self.robot_coin after picking it up (if a new coin appear there it's free)
 
 
 # Run strategy
