@@ -69,9 +69,9 @@ class Strat3(Strategy):
                     Container with all robots actions
         '''
 
-        self.print('score: {}'.format(observation.score))
-        self.print('opponent score: {}'.format(observation.opponent_score))
-        self.print('added_coins: {}'.format(observation.added_coins))
+        #self.print('score: {}'.format(observation.score))
+        #self.print('opponent score: {}'.format(observation.opponent_score))
+        #self.print('added_coins: {}'.format(observation.added_coins))
 
         # increase the step number
         self.current_step += 1
@@ -87,7 +87,7 @@ class Strat3(Strategy):
         for robot_id in range(self.num_robots):
             # Get robot specific observation
             robot = observation.robot(robot_id)
-            self.print('Robot {}:'.format(robot_id))
+            #self.print('Robot {}:'.format(robot_id))
             for direction in self.directions:
                 radar = observation.radar(robot_id, direction)  # get radar
                 self.actualizeMap(robot, direction, radar)  # we actualize the board_map and distance_map
@@ -100,17 +100,17 @@ class Strat3(Strategy):
 
             ### Robot is penalized, do nothing
             if robot.penalty > 0:
-                self.print('penalty: {}'.format(robot.penalty))
+                #self.print('penalty: {}'.format(robot.penalty))
                 continue
 
             ### In home base and low on energy
             if robot.home_base and robot.energy < (self.max_energy / 3):
-                self.print('recharge')
+                #self.print('recharge')
                 action.recharge(robot_id)  # recharge
                 continue
 
             ### Choice of the best action
-            self.print("bestMove evaluation")
+            #self.print("bestMove evaluation")
             #move = self.bestMove(observation, robot)  # we get the best move
             move = self.nextMove(observation, robot_id)  # we get the next move
             action.move(robot_id, move)  # set move action
@@ -260,7 +260,7 @@ class Strat3(Strategy):
         sym_x, sym_y = self.symmetric(position)
         self.board_map[x][y] = self.map_values["home_base"]
         self.board_map[sym_x][sym_y] = self.map_values["opponent_home_base"]
-        self.distance_map = 0  # distance to our home_base
+        self.distance_map[x][y] = 0  # distance to our home_base
 
         ### we look at the other positions (can be improved !!!)
         (new_x, new_y) = tuple(
@@ -308,12 +308,11 @@ class Strat3(Strategy):
         # instantiation of the position's distance if it has change
         if minValue < np.inf:
             self.distance_map[x][y] = minValue
-
-        # we adjust the value of the distance of the neighbors in the case it has to be
-        for (v, pos) in [(v1, (x - 1, y)), (v2, (x, y - 1)), (v3, (x, y + 1)), (v4, (x + 1, y + 1))]:
-            # if a neighbor has a wrong distance_value to our home_base, we actualize it
-            if v == -1 or (v < np.inf and v > minValue + 1):
-                self.minValue(pos)
+            # we adjust the value of the distance of the neighbors in the case it has to be
+            for (v, pos) in [(v1, (x - 1, y)), (v2, (x, y - 1)), (v3, (x, y + 1)), (v4, (x + 1, y + 1))]:
+                # if a neighbor has a wrong distance_value to our home_base, we actualize it
+                if v == -1 or (v < np.inf and v > minValue + 1):
+                    self.minValue(pos)
 
     # Convert a direction into the corresponding tuple (in games-axis !!)
     def dir2coord(self, direction):
@@ -510,20 +509,20 @@ class Strat3(Strategy):
             if robot.has_item:
                 path = self.pathHomeBase(position)
                 if path != []:  # should be the case since the robot is on a valid position
-                    self.path[robot_id] = path
-                    self.print("pathHomeBase-home_base: ", position, path, robot_id, self.path)
+                    self.path[robot_id] = [path[0]]  # we put only the next move, to avoid the problem of skipped moves
+                    #self.print("pathHomeBase-home_base: ", position, path, robot_id, self.path)
 
             # if the robot has no coin, we look if he can search a free coin (not already assigned to another robot)
             else:
                 dist, pos, path = self.distanceCoin(position)
                 if dist > 0:  # if we found a free coin
-                    self.path[robot_id] = path
-                    self.print("pathHomeBase_coin: ", position, path, robot_id, self.path)
+                    self.path[robot_id] = [path[0]]  # we put only the next move, to avoid the problem of skipped moves
+                    #self.print("pathHomeBase_coin: ", position, path, robot_id, self.path)
 
         # if the robot should follow a specific path
         if self.path[robot_id] != []:
             next_position = self.path[robot_id].pop(0)  # get the next position and remove it from path
-            self.print("path : ", position, next_position, self.path[robot_id], robot_id, self.path)
+            #self.print("path : ", position, next_position, self.path[robot_id], robot_id, self.path)
             move = self.coord2dir(position, next_position)  # the move to go to next_position
             return move  # we return the move corresponding to the path the robot has to follow
 
@@ -569,8 +568,9 @@ class Strat3(Strategy):
                 return "right"
         else:
             self.print()
-            self.print(pos, goal)
+            self.print("ERROR coord2dir : ", pos, goal)
             self.print(self.board_map)
+            self.print(self.distance_map)
             sys.exit(1)  # stop the program
 
             raise ValueError("Starting position and goal are not adjacent")
@@ -599,6 +599,8 @@ class Strat3(Strategy):
 
 # think about this problems after
 # delete coin_position in self.robot_coin after picking it up (if a new coin appear there it's free)
+# robots' position on board_map
+# strange: board_map[x][y] = 'U' and distance_map[x][y] = 2.
 
 
 # Run strategy
