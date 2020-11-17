@@ -45,7 +45,7 @@ class Strat3(Strategy):
         self.hyperparameters = {"alpha": 1, "beta": 100, "gamma": -30, "delta": 1.2, "epsilon": -100, "zeta": -30}
         # Initialization of the known map
         self.board_map = None  # Will be initialize during the step 1
-        self.distance_map = None
+        self.distance_map = None  # Will be initialize during the step 1
         # Count at which step we are
         self.current_step = 0
         # Position of our home_base
@@ -78,19 +78,19 @@ class Strat3(Strategy):
         # if we are at step 1 we identified our home_base
         if self.current_step == 1:
             self.positionHomeBase(observation)  # We play up or bottom ?
-            self.board_map, self.distance_map = self.initMap()  # Initialization of the board_map
+            self.board_map, self.distance_map = self.initMap()  # Initialization of the board_map and distance_map
 
         # Initialize empty action
         action = self.action()
 
-        # Loop over robots / Actualization of the board_map
+        # Loop over robots / Actualization of the board_map and distance_map
         for robot_id in range(self.num_robots):
             # Get robot specific observation
             robot = observation.robot(robot_id)
             self.print('Robot {}:'.format(robot_id))
             for direction in self.directions:
                 radar = observation.radar(robot_id, direction)  # get radar
-                self.actualizeMap(robot, direction, radar)  # we actualize the board_map
+                self.actualizeMap(robot, direction, radar)  # we actualize the board_map and distance_map
 
         # Loop over robots / Choose action
         for robot_id in range(self.num_robots):
@@ -189,7 +189,7 @@ class Strat3(Strategy):
         robot_x, robot_y = self.numpyPosition(tuple(robot.position))  # we get the position of the robot
         dir_x, dir_y = self.numpyPosition(self.dir2coord(direction))  # we get the direction (as a tuple)
 
-        # we actualize the board_map with the value of the free_squares
+        # we actualize the board_map and the distance_map with the value of the free_squares
         for i in range(radar.distance):
             x = robot_x + i * dir_x
             y = robot_y + i * dir_y
@@ -199,7 +199,7 @@ class Strat3(Strategy):
             # if we already know there is a free_square, it stores the distance to the home_base
             # so we don't want to overwrite it
             try:
-                v = int(dmxy)
+                v = int(dmxy)  # works only if dmxy is a free_square / our home_base, not if it is equal to np.inf
             except:
                 if bmxy not in [self.map_values["home_base"], self.map_values["opponent_home_base"],
                                 self.map_values["wall"]]:  # if it's not an immutable object
@@ -236,7 +236,7 @@ class Strat3(Strategy):
             if self.current_step == 1:
                 self.otherHomeBase((x, y), direction)
 
-        # we update the board_map with the distance to our home_base (from the new discovered free_squares)
+        # we update the distance_map with the distance to our home_base (from the new discovered free_squares)
         self.distanceMap()
 
     # If the given position corresponds to another home_base boxes we add it
@@ -280,7 +280,7 @@ class Strat3(Strategy):
             if 0 < new_x < self.shape[0] and 0 < new_y < self.shape[1]:
                 self.detectedHomeBase((new_x, new_y))
 
-    # Calculate the distance to the home-base of every point of the board_map
+    # Calculate the distance to the home-base of every point of the distance_map
     def distanceMap(self):
         (n, p) = self.shape
         for x in range(1, n - 1):
@@ -407,29 +407,23 @@ class Strat3(Strategy):
     # Return the distance to our home_base
     def distanceHomeBase(self, position):
         x, y = position  # already numpyPosition
-        if self.board_map[x][y] == self.map_values["home_base"]:  # we look at our home_base
-            return 0
-        if self.board_map[x][y] == self.map_values["coin"]:  # we look at a coin
-            return self.distanceCoinHomeBase(position)
-        dist = self.board_map[x][y]
-        try:
-            distance = int(dist)
-            if distance == 0:
-                self.print("ERROR : distanceHomeBase, the distance wasn't evaluated")
-            return distance
-        except:
+        dist = self.distance_map[x][y]
+        if dist == np.inf:
             self.print("ERROR : distanceHomeBase, given position doesn't correspond to a free_square")
+        elif dist == -1:
+            self.print("ERROR : distanceHomeBase, the distance wasn't evaluated")
+        return dist
 
-    # Return the proportion of the board_map that we know
+    # Return the proportion of the distance_map that we know
     def knowMap(self):
         (n, p) = self.shape
         prop = 0
         for x in range(1, n - 1):  # we don't look at the borders
             for y in range(1, p - 1):  # we don't look at the borders
                 # what with the "unidentified" objects ?
-                if self.board_map[x][y] != np.inf:  # if we know what is in the position (x, y)
+                if self.distance_map[x][y] != np.inf:  # if we know what is in the position (x, y)
                     prop += 1
-        return prop / (n - 2 * p - 2)  # the dimensions of the board_map without the borders
+        return prop / (n - 2 * p - 2)  # the dimensions of the distance_map without the borders
 
     # Calculate the shortest distance to a coin
     def distanceCoin(self, position):
@@ -443,13 +437,13 @@ class Strat3(Strategy):
 
         # look at the neighbors and adjust their distance
         for (x, y) in self.neighbors(position):
-            squares.append((x, y))
-            dist_map[x][y] = 1
+            if self.distance_map[x][y] != np.inf:  # if it's a free_square
+                squares.append((x, y))
+                dist_map[x][y] = 1
 
         # searching for the nearest coin
         while distance == -1:
             if len(squares) == 0:
-                #return -1, (-1, -1), []
                 break
             x, y = squares.pop(0)  # BFS
             dist = dist_map[x][y]
@@ -463,8 +457,9 @@ class Strat3(Strategy):
             for (i, j) in nghb:
                 # if we don't have already visit it
                 if dist_map[i][j] == np.inf:
-                    squares.append((i, j))
-                    dist_map[i][j] = dist + 1
+                    if self.distance_map[x][y] != np.inf:  # if it's a free_square
+                        squares.append((i, j))
+                        dist_map[i][j] = dist + 1
 
         # the path from the coin to the robot
         if pos != (-1, -1):  # if a coin were found
@@ -486,16 +481,7 @@ class Strat3(Strategy):
     # Calculate the distance between the coin and our home_base
     def distanceCoinHomeBase(self, position):
         coin_x, coin_y = position  # already in numpyPosition
-        distance = np.inf
-        # look at the neighbors and adjust their distance
-        for (x, y) in self.neighbors(position):
-            v = self.board_map[x][y]  # the value of the neighbor
-            try:
-                v = int(v)  # we look if it's a free_square (if it is one we have the distance to our home_base)
-                if v > 0 and v < distance - 1:
-                    distance = v + 1
-            except:
-                pass
+        distance = self.distance_map[coin_x][coin_y]
         return distance
 
     # Return the neighbors of a position
@@ -593,25 +579,21 @@ class Strat3(Strategy):
     def pathHomeBase(self, position):
         x, y = position
         path = []
-        while self.board_map[x][y] != self.map_values["home_base"]:
-            dist = self.board_map[x][y]
-            try:
-                distance = int(dist)  # we try to convert it to an int
+
+        while self.distance_map[x][y] != 0:
+            dist = self.distance_map[x][y]
+            if dist != np.inf and dist != -1:  # if it's an evaluated free_square
                 nghb = self.neighbors((x, y))  # the neighbors of (x, y)
                 for (i, j) in nghb:
-                    dist2 = self.board_map[i][j]
-                    try:
-                        distance2 = int(dist2)
-                        if distance2 == distance-1:
-                            path.append((i, j))
-                            x, y = i, j  # we change the current position
-                            break
-                    except:
-                        pass
-            except:
+                    dist2 = self.distance_map[i][j]
+                    if dist2 != np.inf and dist2 == dist - 1:  # if it's a free_square which is closer to our home_base
+                        path.append((i, j))
+                        x, y = i, j  # we change the current position
+                        break
+            else:
                 self.print("ERROR : pathHomeBase, the position doesn't correspond to a free_square")
-                self.print(position)
-                self.print(self.board_map)
+                self.print(position, (x, y))
+                self.print(self.distance_map)
                 return []
         return path
 
