@@ -45,6 +45,7 @@ class Strat3(Strategy):
         self.hyperparameters = {"alpha": 1, "beta": 100, "gamma": -30, "delta": 1.2, "epsilon": -100, "zeta": -30}
         # Initialization of the known map
         self.board_map = None  # Will be initialize during the step 1
+        self.distance_map = None
         # Count at which step we are
         self.current_step = 0
         # Position of our home_base
@@ -77,7 +78,7 @@ class Strat3(Strategy):
         # if we are at step 1 we identified our home_base
         if self.current_step == 1:
             self.positionHomeBase(observation)  # We play up or bottom ?
-            self.board_map = self.initMap()  # Initialization of the board_map
+            self.board_map, self.distance_map = self.initMap()  # Initialization of the board_map
 
         # Initialize empty action
         action = self.action()
@@ -102,10 +103,11 @@ class Strat3(Strategy):
                 self.print('penalty: {}'.format(robot.penalty))
                 continue
 
-            ### In home base and low on eneregy
+            ### In home base and low on energy
             if robot.home_base and robot.energy < (self.max_energy / 3):
                 self.print('recharge')
                 action.recharge(robot_id)  # recharge
+                continue
 
             ### Choice of the best action
             self.print("bestMove evaluation")
@@ -139,6 +141,7 @@ class Strat3(Strategy):
     # Creates the known-map of the board
     def initMap(self):
         board_map = np.full(self.shape, self.map_values["unknown"])  # what is unknown is set to infinity
+        distance_map = np.full(self.shape, np.inf)  # what is unknown is set to infinity
 
         ### side walls
         board_map[0:self.shape[0], 0] = self.map_values["wall"]  # left walls
@@ -159,7 +162,9 @@ class Strat3(Strategy):
         board_map[1][1] = self.map_values[home_base1]  # the upper home_base
         board_map[sym_x][sym_y] = self.map_values[home_base2]  # the bottom home_base
 
-        return board_map
+        distance_map[1][1] = 0  # distance to our home_base
+
+        return board_map, distance_map
 
     # Return the symmetric of position
     def symmetric(self, position):
@@ -190,34 +195,43 @@ class Strat3(Strategy):
             y = robot_y + i * dir_y
             sym_x, y = self.symmetric((x, y))  # the symmetric position
             bmxy = self.board_map[x][y]
+            dmxy = self.distance_map[x][y]
             # if we already know there is a free_square, it stores the distance to the home_base
             # so we don't want to overwrite it
             try:
-                v = int(bmxy)
+                v = int(dmxy)
             except:
                 if bmxy not in [self.map_values["home_base"], self.map_values["opponent_home_base"],
                                 self.map_values["wall"]]:  # if it's not an immutable object
                     obj = "free_square"
                     sym_obj = self.symmetricObject(obj)  # the symmetrical corresponding object
+                    # board_map
                     self.board_map[x][y] = self.map_values[obj]
                     self.board_map[sym_x][y] = self.map_values[sym_obj]
+                    # distance_map
+                    self.distance_map[x][y] = -1  # distance to home_base isn't evaluated
+                    self.distance_map[sym_x][y] = -1  # distance to home_base isn't evaluated
 
         # position of the detected object
         x = robot_x + radar.distance * dir_x
         y = robot_y + radar.distance * dir_y
-        sym_x, y = self.symmetric((x, y))  # the symmetric position
+        sym_x, sym_y = self.symmetric((x, y))  # the symmetric position
         # we store the nature of the object in the map (we don't replace immutable items)
         if self.board_map[x][y] not in (self.map_values["home_base"],
                                         self.map_values["opponent_home_base"],
                                         self.map_values["wall"]):
             obj = radar.object
-            if obj == "robot":  # if we detected a robot it means there is a free_square at this place
-                obj = "free_square"
             if obj is None:  # if we didn't detect, the object is unidentified
                 obj = "unidentified"
             sym_obj = self.symmetricObject(obj)  # the symmetrical corresponding object
             self.board_map[x][y] = self.map_values[obj]
-            self.board_map[sym_x][y] = self.map_values[sym_obj]
+            self.board_map[sym_x][sym_y] = self.map_values[sym_obj]
+
+            # we detect something corresponding to a new free_square
+            if (obj == "robot" or obj == "coin") and self.distance_map[x][y] == np.inf:
+                self.distance_map[x][y] = -1  # distance to home_base isn't evaluated
+                self.distance_map[sym_x][sym_y] = -1  # distance to home_base isn't evaluated
+
             # during the first step we can identify the other home_base boxes
             if self.current_step == 1:
                 self.otherHomeBase((x, y), direction)
@@ -246,6 +260,7 @@ class Strat3(Strategy):
         sym_x, sym_y = self.symmetric(position)
         self.board_map[x][y] = self.map_values["home_base"]
         self.board_map[sym_x][sym_y] = self.map_values["opponent_home_base"]
+        self.distance_map = 0  # distance to our home_base
 
         ### we look at the other positions (can be improved !!!)
         (new_x, new_y) = tuple(
@@ -274,42 +289,31 @@ class Strat3(Strategy):
 
     # return the minimum value of the neighbors + 1, and call minValue on the neighbors which value is > minValue+1
     def minValue(self, position):
-        (x, y) = position
+        (x, y) = position  # already numpy position
         # if the position doesn't correspond to a free_square
-        if self.board_map[x][y] != str(self.map_values["free_square"]):
+        if self.distance_map[x][y] != -1:
             return None
         minValue = np.inf
         # neighbors
-        v1 = self.board_map[x - 1][y]  # up
-        v2 = self.board_map[x][y - 1]  # left
-        v3 = self.board_map[x][y + 1]  # right
-        v4 = self.board_map[x + 1][y]  # bottom
+        v1 = self.distance_map[x - 1][y]  # up
+        v2 = self.distance_map[x][y - 1]  # left
+        v3 = self.distance_map[x][y + 1]  # right
+        v4 = self.distance_map[x + 1][y]  # bottom
 
         # we look at the neighbors
         for v in [v1, v2, v3, v4]:
-            # we try to convert the String into an int (distance to home-base)
-            try:
-                v = int(v)
-                if v < minValue - 1 and v > 0:
-                    minValue = v + 1  # it takes 1 more step to achieve this position from the home_base
-            except:
-                # we are next to our home_base
-                if v == self.map_values["home_base"]:
-                    minValue = 1
+            if v >= 0 and v < minValue - 1:
+                minValue = v + 1  # it takes 1 more step to achieve this position from the home_base
 
         # instantiation of the position's distance if it has change
         if minValue < np.inf:
-            self.board_map[x][y] = str(minValue)
+            self.distance_map[x][y] = minValue
 
         # we adjust the value of the distance of the neighbors in the case it has to be
         for (v, pos) in [(v1, (x - 1, y)), (v2, (x, y - 1)), (v3, (x, y + 1)), (v4, (x + 1, y + 1))]:
-            try:
-                v = int(v)
-                # if a neighbor has a wrong distance_value to our home_base, we actualize it
-                if v < np.inf and v > minValue + 1:
-                    self.minValue(pos)
-            except:
-                pass
+            # if a neighbor has a wrong distance_value to our home_base, we actualize it
+            if v == -1 or (v < np.inf and v > minValue + 1):
+                self.minValue(pos)
 
     # Convert a direction into the corresponding tuple (in games-axis !!)
     def dir2coord(self, direction):
@@ -519,7 +523,7 @@ class Strat3(Strategy):
             # the robot has a coin but doesn't have the path to go home -> we assign the path to go to the home_base
             if robot.has_item:
                 path = self.pathHomeBase(position)
-                if path != None:  # should be the case since the robot is on a valid position
+                if path != []:  # should be the case since the robot is on a valid position
                     self.path[robot_id] = path
                     self.print("pathHomeBase-home_base: ", position, path, robot_id, self.path)
 
@@ -606,6 +610,8 @@ class Strat3(Strategy):
                         pass
             except:
                 self.print("ERROR : pathHomeBase, the position doesn't correspond to a free_square")
+                self.print(position)
+                self.print(self.board_map)
                 return []
         return path
 
