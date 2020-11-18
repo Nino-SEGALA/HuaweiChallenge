@@ -20,7 +20,7 @@ class Simple(Strategy):
             'wall': 'W',
             'coin': 'C',
             'home_base': 'H',
-            'robot': 'R'
+            'robot': 'O'
         }
 
         self.opp_direction = {
@@ -89,7 +89,7 @@ class Simple(Strategy):
         robot_state['optimal_path_set'] = False
 
         if not robot_state['going_for_coin']:
-            if self.look_straight(robot, 'right')[0] == 'X' or self.look_straight(robot, 'down')[0] == 'X' or self.look_straight(robot, 'left')[0] == 'X' or self.look_straight(robot, 'up')[0] == 'X':
+            if self.look_straight(robot, observation, 'right')[0] == 'X' or self.look_straight(robot, observation, 'down')[0] == 'X' or self.look_straight(robot, observation, 'left')[0] == 'X' or self.look_straight(robot, observation, 'up')[0] == 'X':
                 self.print("SCANNING...")
                 self.scan(robot_id, observation, action)
                 return True
@@ -100,7 +100,7 @@ class Simple(Strategy):
         robot = observation.robot(robot_id)
         robot_state = self.robot_state[robot_id]
 
-        priority_direction = self.get_direction_priority_when_coin_spot(robot)
+        priority_direction = self.get_direction_priority_when_coin_spot(robot, observation)
         
         if priority_direction:
             robot_state['going_for_coin'] = True
@@ -118,6 +118,7 @@ class Simple(Strategy):
             if priority_direction == 'down':
                 self.map[robot.position[1] + 1][robot.position[0]] = 'O'
             return True
+        robot_state['going_for_coin'] = False
 
         return False
 
@@ -135,7 +136,6 @@ class Simple(Strategy):
         robot = observation.robot(robot_id)
         self.map[robot.position[1]][robot.position[0]] = 'O'
         action.move(robot_id, direction)
-        
 
     def step(self, observation):
         action = self.action()
@@ -159,12 +159,12 @@ class Simple(Strategy):
             
         return action
 
-    def get_direction_priority_when_coin_spot(self, robot):
+    def get_direction_priority_when_coin_spot(self, robot, observation):
         items = {
-            'left': self.look_straight(robot, 'left'), 
-            'right': self.look_straight(robot, 'right'), 
-            'up': self.look_straight(robot, 'up'), 
-            'down': self.look_straight(robot, 'down')
+            'left': self.look_straight(robot, observation, 'left'), 
+            'right': self.look_straight(robot, observation, 'right'), 
+            'up': self.look_straight(robot, observation, 'up'), 
+            'down': self.look_straight(robot, observation, 'down')
         }
         direction = None
         distance = 9999999
@@ -177,10 +177,10 @@ class Simple(Strategy):
 
     def move_down(self, robot_id, observation, action):
         robot = observation.robot(robot_id)
-        if robot.position[1]+1 < self.shape[1]:
-            if self.map[robot.position[1]+1][robot.position[0]] not in ('W', 'R', 'X'):
-                action.move(robot_id, 'down')
-                return True
+        if self.map[robot.position[1]+1][robot.position[0]] not in ('W', 'R', 'X'):
+            self.map[robot.position[1]][robot.position[0]] = 'O'
+            action.move(robot_id, 'down')
+            return True
 
         return False
     
@@ -188,6 +188,7 @@ class Simple(Strategy):
         robot = observation.robot(robot_id)
 
         if self.map[robot.position[1]][robot.position[0]-1] not in ('W', 'R', 'X'):
+            self.map[robot.position[1]][robot.position[0]] = 'O'
             action.move(robot_id, 'left')
             return True
 
@@ -197,6 +198,7 @@ class Simple(Strategy):
         robot = observation.robot(robot_id)
 
         if self.map[robot.position[1]][robot.position[0]+1] not in ('W', 'R', 'X'):
+            self.map[robot.position[1]][robot.position[0]] = 'O'
             action.move(robot_id, 'right')
             return True
 
@@ -205,40 +207,51 @@ class Simple(Strategy):
     def move_up(self, robot_id, observation, action):
         robot = observation.robot(robot_id)
         if self.map[robot.position[1]-1][robot.position[0]]  not in ('W', 'R', 'X'):
+            self.map[robot.position[1]][robot.position[0]] = 'O'
             action.move(robot_id, 'up')
             return True
         return False
 
-
-    def look_straight(self, robot, direction):
+    def look_straight(self, robot, observation, direction):
         robot_x = robot.position[0]
         robot_y = robot.position[1]
         distance = 0
+
+        robot_neighbor = self.check_own_robot(robot, observation)
+
         if direction == 'right':
+            if not robot_neighbor['right']:
+                return ('R', 1)
             while self.map[robot_y][robot_x + 1] == 'O':
                 robot_x += 1
                 distance += 1
             return self.map[robot_y][robot_x + 1], distance
 
         if direction == 'left':
+            if not robot_neighbor['left']:
+                return ('R', 1)
             while self.map[robot_y][robot_x - 1] == 'O':
                 robot_x -= 1
                 distance += 1
             return self.map[robot_y][robot_x - 1], distance
 
         if direction == 'up':
+            if not robot_neighbor['up']:
+                return ('R', 1)
             while self.map[robot_y - 1][robot_x] == 'O':
                 robot_y -= 1
                 distance += 1
             return self.map[robot_y - 1][robot_x], distance
         
         if direction == 'down':
+            if not robot_neighbor['down']:
+                return ('R', 1)
             while self.map[robot_y + 1][robot_x] == 'O':
                 robot_y += 1
                 distance += 1
             return self.map[robot_y + 1][robot_x], distance
 
-    def get_neighbor(self, robot, observation, direction):
+    def check_own_robot(self, robot, observation):
         robot_position = robot.position
         free_direction = {
             'right': True,
@@ -264,6 +277,12 @@ class Simple(Strategy):
 
             if r.position[0] == robot_position[0] and r.position[1] + 1 == robot_position[1]:
                 free_direction['up'] = False
+
+        return free_direction
+
+    def get_neighbor(self, robot, observation, direction):
+        
+        free_direction = self.check_own_robot(robot, observation)
 
         self.print("FREE DIRECTION", free_direction)
 
@@ -328,7 +347,8 @@ class Simple(Strategy):
             self.map[bottom_y][robot.position[0]] = self.object_map[obj_down.object]
             for i in range(robot.position[1], bottom_y):
                 self.map[i][robot.position[0]] = 'O'
-                    
+
+        self.print(self.map)
 
     def print_map(self):
         self.print("PRINTING MAP")
