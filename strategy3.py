@@ -115,14 +115,12 @@ class Strat3(Strategy):
                 continue
 
             ### Choice of the best action
-            #self.print("bestMove evaluation")
             #move = self.bestMove(observation, robot)  # we get the best move
             move = self.nextMove(observation, robot_id)  # we get the next move
             action.move(robot_id, move)  # set move action
-            action.detect(robot_id)  # we detect what we see
-            # We actualize the position of our robot
-            new_x, new_y = np.array(self.numpyPosition(position)) + np.array(self.numpyPosition(self.dir2coord(move)))
-            #self.robots_position[robot_id] = [new_x, new_y]
+            #action.detect(robot_id)  # we detect what we see
+            if self.detectionNextMove(position, move):  # if there is something to detect after the move
+                action.detect(robot_id)
 
         #self.print(f"step {self.current_step} : board_map")
         #self.print(self.board_map)
@@ -264,7 +262,6 @@ class Strat3(Strategy):
         self.board_map[x][y] = self.map_values["robot"]
         # robots_position
         self.robots_position[robot_id] = [x, y]  # the new position of the robot is stored
-        #self.print("actualizeRobotPosition", self.current_step, robot_id)
 
     # If the given position corresponds to another home_base boxes we add it
     # and calculate other home_base boxes (some of them)
@@ -690,6 +687,33 @@ class Strat3(Strategy):
         self.print("ERROR : exploration, no valid move founded")
         move = np.random.choice(list(self.directions))
         return move
+
+    # if there is something to detect on the next move, we detect
+    def detectionNextMove(self, position, move):
+        x, y = self.numpyPosition(position)
+        next_x, next_y = tuple(np.array(position) + np.array(self.numpyPosition(self.dir2coord(move))))
+        detectObj = [self.map_values["unidentified"], self.map_values["unknown"]]
+
+        directions = ["right", "down", "left", "up"]
+        for d in directions:
+            dist, obj = self.radarDirection((next_x, next_y), d)  # we look, what we could see at the next step
+            if obj in detectObj:  # if we want to discover the nature of this object
+                return True
+        return False
+
+    def radarDirection(self, position, direction):
+        x, y = position  # position of the robot
+        n, p = self.numpyPosition(self.dir2coord(direction))  # vector corresponding to the direction
+
+        i, j = x+n, y+p  # the neighbor box
+        dist = 1
+        while self.board_map[i][j] == self.map_values["free_square"]:
+            # we move one box further
+            i += n
+            j += p
+            dist += 1  # we are at a distance 1 further
+        return dist, self.board_map[i][j]
+
 
 # think about this problems after
 # delete coin_position in self.robot_coin after picking it up (if a new coin appear there it's free)
