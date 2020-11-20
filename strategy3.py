@@ -556,7 +556,7 @@ class Strat3(Strategy):
 
         # choose random direction to move
         self.print("nextMove : random move chosen")
-        move = np.random.choice(list(self.directions))
+        move = self.exploration(position)
         return move
 
         #return None  # should not happen
@@ -675,6 +675,21 @@ class Strat3(Strategy):
             path.reverse()  # we reverse it to have the path from the robot to the coin
 
         return path
+
+    # exploration strategy
+    def exploration(self, position):
+        x, y = position  # already numpyPosition
+        move = None
+
+        directions = ["right", "down", "left", "up"]
+        for d in directions:
+            new_x, new_y = tuple(np.array(position) + np.array(self.numpyPosition(self.dir2coord(d))))
+            if self.board_map[new_x][new_y] == self.map_values["free_square"]:
+                move = d
+                return move
+        self.print("ERROR : exploration, no valid move founded")
+        move = np.random.choice(list(self.directions))
+        return move
 
 # think about this problems after
 # delete coin_position in self.robot_coin after picking it up (if a new coin appear there it's free)
