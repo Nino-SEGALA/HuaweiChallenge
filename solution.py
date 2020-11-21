@@ -62,7 +62,6 @@ class Simple(Strategy):
                 new_row.append('X')
             self.map.append(new_row)
 
-
     def goto_home(self, robot_id, observation, action):
         robot = observation.robot(robot_id)
         robot_state = self.robot_state[robot_id]
@@ -80,9 +79,7 @@ class Simple(Strategy):
             
             direction_to_move = robot_state['optimal_path_to_home'][0]
             
-            self.print("WILL GO TOWARDS HOME BASE", direction_to_move, robot_id)
             if self.get_neighbor(robot, observation, direction_to_move) in ('O', 'H'):
-                self.print("HOME BASE CALLING", direction_to_move, robot_id)
                 robot_state['optimal_path_to_home'].pop(0)
                 self.move(robot_id, observation, action, direction_to_move)
             
@@ -98,7 +95,6 @@ class Simple(Strategy):
 
         if not robot_state['going_for_coin']:
             if self.look_straight(robot, observation, 'right')[0] == 'X' or self.look_straight(robot, observation, 'down')[0] == 'X' or self.look_straight(robot, observation, 'left')[0] == 'X' or self.look_straight(robot, observation, 'up')[0] == 'X':
-                self.print("SCANNING...")
                 self.scan(robot_id, observation, action)
                 return True
         
@@ -115,7 +111,6 @@ class Simple(Strategy):
             if self.get_neighbor(robot, observation, priority_direction) not in ('O', 'H', 'C'):
                 return True
             self.move(robot_id, observation, action, priority_direction)
-            self.print("MOVING {} BECAUSE OF COIN".format(priority_direction), robot_id)
             
             if priority_direction == 'right':
                 self.map[robot.position[1]][robot.position[0] + 1] = 'O'
@@ -136,7 +131,6 @@ class Simple(Strategy):
 
         for direction in robot_state['priority_directions']:
             if self.get_neighbor(robot, observation, direction) == 'O':
-                self.print("MOVING {}".format(direction), robot_id)
                 self.move(robot_id, observation, action, direction)
                 return True
 
@@ -146,6 +140,24 @@ class Simple(Strategy):
         action.move(robot_id, direction)
 
     def step(self, observation):
+
+        if len(observation.added_coins) > 0:
+            for added_coin in observation.added_coins:
+                coin_x = added_coin[0]
+                coin_y = added_coin[1]
+                x_min = coin_x - self.coin_box[0]
+                x_max = coin_x + self.coin_box[0]
+                y_min = coin_y - self.coin_box[1]
+                y_max = coin_y + self.coin_box[1]
+
+                for y in range(y_min, y_max + 1):
+                    if y < 0 or y >= self.shape[0]:
+                        continue
+                    for x in range(x_min, x_max + 1):
+                        if x < 0 or x >= self.shape[1]:
+                            continue
+                        self.map[y][x] = 'X'
+
         action = self.action()
 
         for robot_id in range(self.num_robots):
@@ -243,7 +255,6 @@ class Simple(Strategy):
                 free_direction['left'] = False
 
             if r.position[0] == robot_position[0] and r.position[1] - 1 == robot_position[1]:
-                self.print("DOWN ROBOT", r, robot_position)
                 free_direction['down'] = False
 
             if r.position[0] == robot_position[0] and r.position[1] + 1 == robot_position[1]:
@@ -254,8 +265,6 @@ class Simple(Strategy):
     def get_neighbor(self, robot, observation, direction):
         
         free_direction = self.check_own_robot(robot, observation)
-
-        self.print("FREE DIRECTION", free_direction)
 
         if direction == 'left' and free_direction['left']:
             return self.map[robot.position[1]][robot.position[0] - 1]
@@ -336,7 +345,6 @@ class Simple(Strategy):
             for i in range(robot.position[1], bottom_y):
                 self.map[i][robot.position[0]] = 'O'
 
-        # self.print(self.map)
 
     def get_path(self, robot_id, start, end):
         a = copy.deepcopy(self.map)
@@ -359,7 +367,6 @@ class Simple(Strategy):
         
         while m[end[0]][end[1]] == 0:
             k += 1
-            # self.print("KKKKKKK -> ", k, end)
             for i in range(len(m)):
                 for j in range(len(m[i])):
                     if m[i][j] == k:
