@@ -52,6 +52,8 @@ class Strat3(Strategy):
         #self.home_base_position = (1, 1)  # Will be adapted during the step 1
         # Position of our robots
         self.robots_position = [[] for r in range(self.num_robots)]
+        # Position where our robots should be on the next step
+        self.robots_position_next_move = []
         # Position of our home_base
         self.home_base_positions = [(1, 1)]  # Will be adapted during the step 1
         # If the robot has a specific path to follow
@@ -97,7 +99,10 @@ class Strat3(Strategy):
             for direction in self.directions:
                 radar = observation.radar(robot_id, direction)  # get radar
                 self.actualizeMap(robot, direction, radar)  # we actualize the board_map and distance_map
+            # todo : actualize after each move also
             self.actualizeRobotPosition(observation, robot_id)  # we actualize the position of our robot on the map
+
+        self.print(self.board_map)
 
         # Loop over robots / Choose action
         for robot_id in range(self.num_robots):
@@ -120,7 +125,10 @@ class Strat3(Strategy):
             #move = self.bestMove(observation, robot)  # we get the best move
             move = self.nextMove(observation, robot_id)  # we get the next move
             action.move(robot_id, move)  # set move action
-            #action.detect(robot_id)  # we detect what we see
+            # actualize robot position
+            next_position = tuple(np.array(self.numpyPosition(position))
+                                  + np.array(self.numpyPosition(self.dir2coord(move))))
+            self.actualizeRobotAfterMove(robot_id, self.numpyPosition(position), next_position)
             if self.detectionNextMove(position, move):  # if there is something to detect after the move
                 action.detect(robot_id)
 
@@ -264,9 +272,14 @@ class Strat3(Strategy):
     # Actualize the position of the robot on board_map
     def actualizeRobotPosition(self, observation, robot_id):
         robot = observation.robot(robot_id)
-        x, y = self.numpyPosition(robot.position)
-        old_x, old_y = self.robots_position[robot_id]  # the previous position of the robot
-        #self.print("aRP : ", (old_x, old_y), (x, y))
+        new_position = self.numpyPosition(robot.position)
+        position = self.robots_position[robot_id]  # the previous position of the robot
+        self.actualizeRobotAfterMove(robot_id, position, new_position)
+    
+    # after chosen move, we actualize the map with the future position of the robot
+    def actualizeRobotAfterMove(self, robot_id, position, next_position):
+        old_x, old_y = position
+        x, y = next_position
         # board_map
         if (old_x, old_y) in self.home_base_positions:  # we were in our home_base
             self.board_map[old_x][old_y] = self.map_values["home_base"]
@@ -565,7 +578,7 @@ class Strat3(Strategy):
 
         # exploration : no coins to search or to bring back home
         move = self.exploration(position)
-        self.print("exploration : ", move)
+        self.print("exploration :", move, ", robot : ", robot_id)
         return move
 
         #return None  # should not happen
