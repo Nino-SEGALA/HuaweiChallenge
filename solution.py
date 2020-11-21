@@ -2,6 +2,7 @@ import numpy as np
 from robot_explorers import Strategy
 import random
 import copy
+from random import randrange
 
 class Simple(Strategy):
     '''
@@ -39,6 +40,8 @@ class Simple(Strategy):
 
         self.robot_state = {}
 
+        self.home_bases = []
+
         for robot_id in range(self.num_robots):
             self.robot_state[robot_id] = {
                 'detection_enabled': False,
@@ -49,6 +52,7 @@ class Simple(Strategy):
                 'going_for_coin': False,
                 'prev_move': None,
                 'direction_idx': 0,
+                'home_bases': [],
                 'priority_directions': ['right', 'down', 'up', 'left']
             }
 
@@ -63,8 +67,12 @@ class Simple(Strategy):
         robot = observation.robot(robot_id)
         robot_state = self.robot_state[robot_id]
 
-        if robot.has_item and not robot_state['optimal_path_set']:
-            self.get_path(robot_id, robot.position, (1, 2))
+        home_base = None
+        if len(robot_state['home_bases']) > 0:
+            home_base = robot_state['home_bases'][randrange(len(robot_state['home_bases']))]
+
+        if robot.has_item and not robot_state['optimal_path_set'] and home_base is not None:
+            self.get_path(robot_id, robot.position, (home_base[1], home_base[0]))
             
         if robot.has_item and len(robot_state['optimal_path_to_home']) > 0:
             robot_state['prev_move'] = None
@@ -175,43 +183,6 @@ class Simple(Strategy):
 
         return direction
 
-    def move_down(self, robot_id, observation, action):
-        robot = observation.robot(robot_id)
-        if self.map[robot.position[1]+1][robot.position[0]] not in ('W', 'R', 'X'):
-            self.map[robot.position[1]][robot.position[0]] = 'O'
-            action.move(robot_id, 'down')
-            return True
-
-        return False
-    
-    def move_left(self, robot_id, observation, action):
-        robot = observation.robot(robot_id)
-
-        if self.map[robot.position[1]][robot.position[0]-1] not in ('W', 'R', 'X'):
-            self.map[robot.position[1]][robot.position[0]] = 'O'
-            action.move(robot_id, 'left')
-            return True
-
-        return False
-
-    def move_right(self, robot_id, observation, action):
-        robot = observation.robot(robot_id)
-
-        if self.map[robot.position[1]][robot.position[0]+1] not in ('W', 'R', 'X'):
-            self.map[robot.position[1]][robot.position[0]] = 'O'
-            action.move(robot_id, 'right')
-            return True
-
-        return False
-    
-    def move_up(self, robot_id, observation, action):
-        robot = observation.robot(robot_id)
-        if self.map[robot.position[1]-1][robot.position[0]]  not in ('W', 'R', 'X'):
-            self.map[robot.position[1]][robot.position[0]] = 'O'
-            action.move(robot_id, 'up')
-            return True
-        return False
-
     def look_straight(self, robot, observation, direction):
         robot_x = robot.position[0]
         robot_y = robot.position[1]
@@ -308,6 +279,7 @@ class Simple(Strategy):
 
     def scan(self, robot_id, observation, action):
         robot = observation.robot(robot_id)
+        robot_state = self.robot_state[robot_id]
 
         # Check whether detection switch is ON or OFF. Switch it ON
         if not self.robot_state[robot_id]['detection_enabled']:
@@ -329,31 +301,42 @@ class Simple(Strategy):
         bottom_y = robot.position[1] + obj_down.distance
 
         if obj_right.object is not None and right_x is not None and obj_right.object:
+
+            if obj_right.object == 'home_base' and obj_right.distance == 1:
+                robot_state['home_bases'].append((robot.position[0] + 1, robot.position[1]))
+
             self.map[robot.position[1]][right_x] = self.object_map[obj_right.object]
             for i in range(robot.position[0], right_x):
                 self.map[robot.position[1]][i] = 'O'
 
         if obj_left.object is not None and left_x is not None and obj_left.object:
+
+            if obj_left.object == 'home_base' and obj_left.distance == 1:
+                robot_state['home_bases'].append((robot.position[0] - 1, robot.position[1]))
+
             self.map[robot.position[1]][left_x] = self.object_map[obj_left.object]
             for i in range(robot.position[0], left_x, -1):
                 self.map[robot.position[1]][i] = 'O'
 
         if obj_up.object is not None and top_y is not None and obj_up.object:
+
+            if obj_up.object == 'home_base' and obj_up.distance == 1:
+                robot_state['home_bases'].append((robot.position[0], robot.position[1] - 1))
+
             self.map[top_y][robot.position[0]] = self.object_map[obj_up.object]
             for i in range(robot.position[1], top_y, -1):
                 self.map[i][robot.position[0]] = 'O'
 
         if obj_down is not None and bottom_y is not None and obj_down.object:
+
+            if obj_down.object == 'home_base' and obj_down.distance == 1:
+                robot_state['home_bases'].append((robot.position[0], robot.position[1] + 1))
+
             self.map[bottom_y][robot.position[0]] = self.object_map[obj_down.object]
             for i in range(robot.position[1], bottom_y):
                 self.map[i][robot.position[0]] = 'O'
 
-        self.print(self.map)
-
-    def print_map(self):
-        self.print("PRINTING MAP")
-        for i in range(self.shape[0]):
-            self.print(self.map[i])
+        # self.print(self.map)
 
     def get_path(self, robot_id, start, end):
         a = copy.deepcopy(self.map)
@@ -376,6 +359,7 @@ class Simple(Strategy):
         
         while m[end[0]][end[1]] == 0:
             k += 1
+            # self.print("KKKKKKK -> ", k, end)
             for i in range(len(m)):
                 for j in range(len(m[i])):
                     if m[i][j] == k:
@@ -425,7 +409,6 @@ class Simple(Strategy):
 
         self.robot_state[robot_id]['optimal_path_set'] = True
         self.robot_state[robot_id]['optimal_path_to_home'] = moves
-
         
 # Run strategy
 if __name__ == "__main__":

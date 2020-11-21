@@ -3,3 +3,4 @@ venv/
 printPretty.py
 robot_explorers/__pycache__/
 *.zip
+robot_explorers/.DS_Store
