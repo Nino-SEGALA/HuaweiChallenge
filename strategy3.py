@@ -198,7 +198,7 @@ class Strat3(Strategy):
         self.print("ERROR : symmetricObject, given object wasn't found")
         return None
 
-    # Actualization of the board_map after the use of the radar todo: home_base detection problem
+    # Actualization of the board_map after the use of the radar
     def actualizeMap(self, robot, direction, radar):
         robot_x, robot_y = self.numpyPosition(tuple(robot.position))  # we get the position of the robot
         dir_x, dir_y = self.numpyPosition(self.dir2coord(direction))  # we get the direction (as a tuple)
@@ -670,12 +670,12 @@ class Strat3(Strategy):
             nghb = self.neighbors((x, y))
             for (i, j) in nghb:
                 # if we don't have already visit it
-                if self.board_map[i][j] != self.map_values["robot"]:  # we don't go over a robot
+                #if self.board_map[i][j] != self.map_values["robot"]:  # we don't go over a robot
+                if self.board_map[i][j] == self.map_values["free_square"] \
+                        or self.board_map[i][j] == self.map_values["home_base"]:  # if it's a free_square
                     if dist_map[i][j] == np.inf:  # we don't want to make a loop
-                        if self.board_map[x][y] == self.map_values["free_square"]\
-                                or self.board_map[x][y] == self.map_values["home_base"]:  # if it's a free_square
-                            squares.append((i, j))
-                            dist_map[i][j] = dist + 1
+                        squares.append((i, j))
+                        dist_map[i][j] = dist + 1
 
         # the path from the coin to the robot
         if pos != (-1, -1):  # if a home_base were found
