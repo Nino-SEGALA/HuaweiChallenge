@@ -2,3 +2,4 @@ venv/
 *.pyc
 printPretty.py
 robot_explorers/__pycache__/
+*.zip
