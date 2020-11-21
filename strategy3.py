@@ -309,15 +309,15 @@ class Strat3(Strategy):
             self.detectedHomeBase((new_x, new_y))
         # we play at the top
         if self.home_base_positions[0] == (1, 1):  # todo other positions
-            (new_x, new_y) = tuple(
-                np.array(position) + np.array(self.numpyPosition(self.dir2coord("up"))))  # new position
-            if 0 < new_x < self.shape[0] and 0 < new_y < self.shape[1]:
+            (new_x, new_y) = tuple(np.array(position)
+                                   + np.array(self.numpyPosition(self.dir2coord("up"))))  # new position
+            if 0 < new_x < self.shape[0]-1 and 0 < new_y < self.shape[1]-1:
                 self.detectedHomeBase((new_x, new_y))
         # we play at the bottom
         else:
-            (new_x, new_y) = tuple(
-                np.array(position) + np.array(self.numpyPosition(self.dir2coord("down"))))  # new position
-            if 0 < new_x < self.shape[0] and 0 < new_y < self.shape[1]:
+            (new_x, new_y) = tuple(np.array(position)
+                                   + np.array(self.numpyPosition(self.dir2coord("down"))))  # new position
+            if 0 < new_x < self.shape[0]-1 and 0 < new_y < self.shape[1]-1:
                 self.detectedHomeBase((new_x, new_y))
 
     # Calculate the distance to the home-base of every point of the distance_map
@@ -556,6 +556,7 @@ class Strat3(Strategy):
             # if the robot has no coin, we look if he can search a free coin (not already assigned to another robot)
             else:
                 dist, pos, path = self.distanceCoin(position)
+                self.print("nM : pathCoin : ", path)
                 if dist > 0:  # if we found a free coin
                     self.path[robot_id] = [path[0]]  # we put only the next move, to avoid the problem of skipped moves
                     #self.print("pathHomeBase_coin: ", position, path, robot_id, self.path)
@@ -695,7 +696,10 @@ class Strat3(Strategy):
     def exploration(self, position):
         x, y = position  # already numpyPosition
 
-        directions = ["right", "down", "left", "up"]
+        if self.home_base_positions[0] == (1, 1):  # we play at the top
+            directions = ["right", "down", "left", "up"]
+        else:  # we play at the bottom
+            directions = ["right", "up", "left", "down"]
         for d in directions:
             new_x, new_y = tuple(np.array(position) + np.array(self.numpyPosition(self.dir2coord(d))))
             if self.board_map[new_x][new_y] == self.map_values["free_square"]:
@@ -736,7 +740,6 @@ class Strat3(Strategy):
 
 # think about this problems after
 # delete coin_position in self.robot_coin after picking it up (if a new coin appear there it's free)
-# robots' position on board_map
 # strange: board_map[x][y] = 'U' and distance_map[x][y] = 2.
 
 
