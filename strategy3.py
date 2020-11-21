@@ -99,8 +99,6 @@ class Strat3(Strategy):
                 self.actualizeMap(robot, direction, radar)  # we actualize the board_map and distance_map
             self.actualizeRobotPosition(observation, robot_id)  # we actualize the position of our robot on the map
 
-        self.print(self.board_map)
-
         # Loop over robots / Choose action
         for robot_id in range(self.num_robots):
             # Get robot specific observation
@@ -549,14 +547,12 @@ class Strat3(Strategy):
             # the robot has a coin but doesn't have the path to go home -> we assign the path to go to the home_base
             if robot.has_item:
                 path = self.pathHomeBase(position)
-                self.print("nM : pathHomeBase : ", path)
                 if path != []:  # should be the case since the robot is on a valid position
                     self.path[robot_id] = [path[0]]  # we put only the next move, to avoid the problem of skipped moves
 
             # if the robot has no coin, we look if he can search a free coin (not already assigned to another robot)
             else:
                 dist, pos, path = self.distanceCoin(position)
-                self.print("nM : pathCoin : ", path)
                 if dist > 0:  # if we found a free coin
                     self.path[robot_id] = [path[0]]  # we put only the next move, to avoid the problem of skipped moves
                     #self.print("pathHomeBase_coin: ", position, path, robot_id, self.path)
@@ -564,13 +560,10 @@ class Strat3(Strategy):
         # if the robot should follow a specific path
         if self.path[robot_id] != []:
             next_position = self.path[robot_id].pop(0)  # get the next position and remove it from path
-            #self.print("path : ", position, next_position, self.path[robot_id], robot_id, self.path)
             move = self.coord2dir(position, next_position)  # the move to go to next_position
             return move  # we return the move corresponding to the path the robot has to follow
 
-        # no path and no coins to search todo Exploration
-
-        # choose random direction to move
+        # exploration : no coins to search or to bring back home
         move = self.exploration(position)
         self.print("exploration : ", move)
         return move
