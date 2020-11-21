@@ -49,9 +49,11 @@ class Strat3(Strategy):
         # Count at which step we are
         self.current_step = 0
         # Position of our home_base
-        self.home_base_position = (1, 1)  # Will be adapted during the step 1
+        #self.home_base_position = (1, 1)  # Will be adapted during the step 1
         # Position of our robots
         self.robots_position = [[] for r in range(self.num_robots)]
+        # Position of our home_base
+        self.home_base_positions = [(1, 1)]  # Will be adapted during the step 1
         # If the robot has a specific path to follow
         self.path = [[] for r in range(self.num_robots)]
         # If the robot reserve a coin for him (and will search it) | we stock the position of the coin
@@ -138,10 +140,10 @@ class Strat3(Strategy):
 
         # if the robot is at the top of the board, we have the upper home_base
         if robot_x < x - robot_x:
-            self.home_base_position = home_x, home_y
+            self.home_base_positions[0] = (home_x, home_y)
         # if the robot is at the bottom of the board, we have the lower home_base
         else:
-            self.home_base_position = self.symmetric((home_x, home_y))
+            self.home_base_positions[0] = self.symmetric((home_x, home_y))
 
     # Creates the known-map of the board
     def initMap(self):
@@ -156,7 +158,7 @@ class Strat3(Strategy):
 
         ### the home-bases
         # if we play at the top
-        if self.home_base_position == (1, 1):
+        if self.home_base_positions[0] == (1, 1):
             home_base1 = "home_base"
             home_base2 = "opponent_home_base"
         # if we play at the bottom
@@ -196,7 +198,7 @@ class Strat3(Strategy):
         self.print("ERROR : symmetricObject, given object wasn't found")
         return None
 
-    # Actualization of the board_map after the use of the radar
+    # Actualization of the board_map after the use of the radar todo: home_base detection problem
     def actualizeMap(self, robot, direction, radar):
         robot_x, robot_y = self.numpyPosition(tuple(robot.position))  # we get the position of the robot
         dir_x, dir_y = self.numpyPosition(self.dir2coord(direction))  # we get the direction (as a tuple)
@@ -268,7 +270,10 @@ class Strat3(Strategy):
         old_x, old_y = self.robots_position[robot_id]  # the previous position of the robot
         #self.print("aRP : ", (old_x, old_y), (x, y))
         # board_map
-        self.board_map[old_x][old_y] = self.map_values["free_square"]
+        if (old_x, old_y) in self.home_base_positions:  # we were in our home_base
+            self.board_map[old_x][old_y] = self.map_values["home_base"]
+        else:  # we were on a free_square
+            self.board_map[old_x][old_y] = self.map_values["free_square"]
         self.board_map[x][y] = self.map_values["robot"]
         # robots_position
         self.robots_position[robot_id] = [x, y]  # the new position of the robot is stored
@@ -279,7 +284,7 @@ class Strat3(Strategy):
         x, y = position
         if 0 < x < self.shape[0] and 0 < y < self.shape[1]:
             # if we play at the top
-            if self.home_base_position == (1, 1):
+            if self.home_base_positions[0] == (1, 1):
                 if direction in ("left", "up"):
                     self.detectedHomeBase(position)
             # if we play at the bottom
@@ -295,13 +300,15 @@ class Strat3(Strategy):
         self.board_map[x][y] = self.map_values["home_base"]
         self.board_map[sym_x][sym_y] = self.map_values["opponent_home_base"]
         self.distance_map[x][y] = 0  # distance to our home_base
+        if (x, y) not in self.home_base_positions:  # we add the position of our new detected home_base
+            self.home_base_positions.append((x, y))
 
         ### we look at the other positions (can be improved !!!)
         (new_x, new_y) = tuple(np.array(position) + np.array(self.numpyPosition(self.dir2coord("left"))))  # new position
         if 0 < new_x < self.shape[0] and 0 < new_y < self.shape[1]:
             self.detectedHomeBase((new_x, new_y))
         # we play at the top
-        if self.home_base_position == (1, 1):  # todo other positions
+        if self.home_base_positions[0] == (1, 1):  # todo other positions
             (new_x, new_y) = tuple(
                 np.array(position) + np.array(self.numpyPosition(self.dir2coord("up"))))  # new position
             if 0 < new_x < self.shape[0] and 0 < new_y < self.shape[1]:
@@ -542,6 +549,7 @@ class Strat3(Strategy):
             # the robot has a coin but doesn't have the path to go home -> we assign the path to go to the home_base
             if robot.has_item:
                 path = self.pathHomeBase(position)
+                self.print("nM : pathHomeBase : ", path)
                 if path != []:  # should be the case since the robot is on a valid position
                     self.path[robot_id] = [path[0]]  # we put only the next move, to avoid the problem of skipped moves
 
