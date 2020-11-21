@@ -97,6 +97,8 @@ class Strat3(Strategy):
                 self.actualizeMap(robot, direction, radar)  # we actualize the board_map and distance_map
             self.actualizeRobotPosition(observation, robot_id)  # we actualize the position of our robot on the map
 
+        self.print(self.board_map)
+
         # Loop over robots / Choose action
         for robot_id in range(self.num_robots):
             # Get robot specific observation
@@ -233,14 +235,22 @@ class Strat3(Strategy):
             obj = radar.object
             if obj is None:  # if we didn't detect, the object is unidentified
                 obj = "unidentified"
-            if obj == "robot":  # we don't want to actualize our map with the position of the robots by detection
-                obj = "free_square"
-            sym_obj = self.symmetricObject(obj)  # the symmetrical corresponding object
-            self.board_map[x][y] = self.map_values[obj]
-            self.board_map[sym_x][sym_y] = self.map_values[sym_obj]
+                sym_obj = self.symmetricObject(obj)  # the symmetrical corresponding object
+                # don't replace other robots/coins with unidentified
+                if self.board_map[x][y] not in (self.map_values["robot"],
+                                                self.map_values["coin"]):
+                    self.board_map[x][y] = self.map_values[obj]
+                    self.board_map[sym_x][sym_y] = self.map_values[sym_obj]
+
+            else:
+                if obj == "robot":  # we don't want to actualize our map with the position of the robots by detection
+                    obj = "free_square"
+                sym_obj = self.symmetricObject(obj)  # the symmetrical corresponding object
+                self.board_map[x][y] = self.map_values[obj]
+                self.board_map[sym_x][sym_y] = self.map_values[sym_obj]
 
             # we detect something corresponding to a new free_square
-            if (obj == "robot" or obj == "coin") and self.distance_map[x][y] == np.inf:
+            if (obj == "free_square" or obj == "coin") and self.distance_map[x][y] == np.inf:  # robot -> free_square
                 self.distance_map[x][y] = -1  # distance to home_base isn't evaluated
                 self.distance_map[sym_x][sym_y] = -1  # distance to home_base isn't evaluated
 
@@ -552,8 +562,8 @@ class Strat3(Strategy):
         # no path and no coins to search todo Exploration
 
         # choose random direction to move
-        self.print("nextMove : random move chosen")
         move = self.exploration(position)
+        self.print("exploration : ", move)
         return move
 
         #return None  # should not happen
@@ -676,7 +686,6 @@ class Strat3(Strategy):
     # exploration strategy
     def exploration(self, position):
         x, y = position  # already numpyPosition
-        move = None
 
         directions = ["right", "down", "left", "up"]
         for d in directions:
@@ -691,16 +700,18 @@ class Strat3(Strategy):
     # if there is something to detect on the next move, we detect
     def detectionNextMove(self, position, move):
         x, y = self.numpyPosition(position)
-        next_x, next_y = tuple(np.array(position) + np.array(self.numpyPosition(self.dir2coord(move))))
+        next_x, next_y = tuple(np.array((x, y)) + np.array(self.numpyPosition(self.dir2coord(move))))
         detectObj = [self.map_values["unidentified"], self.map_values["unknown"]]
 
         directions = ["right", "down", "left", "up"]
         for d in directions:
             dist, obj = self.radarDirection((next_x, next_y), d)  # we look, what we could see at the next step
             if obj in detectObj:  # if we want to discover the nature of this object
+                self.print("detect : True")
                 return True
         return False
 
+    # returns the distance and the nature of the nearest object in the given direction
     def radarDirection(self, position, direction):
         x, y = position  # position of the robot
         n, p = self.numpyPosition(self.dir2coord(direction))  # vector corresponding to the direction
