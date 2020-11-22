@@ -102,7 +102,7 @@ class Strat3(Strategy):
             # todo : actualize after each move also
             self.actualizeRobotPosition(observation, robot_id)  # we actualize the position of our robot on the map
 
-        self.print(self.board_map)
+        #self.print(self.board_map[0:5])
 
         # Loop over robots / Choose action
         for robot_id in range(self.num_robots):
@@ -275,9 +275,10 @@ class Strat3(Strategy):
         new_position = self.numpyPosition(robot.position)
         position = self.robots_position[robot_id]  # the previous position of the robot
         self.actualizeRobotAfterMove(robot_id, position, new_position)
-    
+
     # after chosen move, we actualize the map with the future position of the robot
     def actualizeRobotAfterMove(self, robot_id, position, next_position):
+        self.print("actualizeRobotAfterMove :", robot_id, position, next_position)
         old_x, old_y = position
         x, y = next_position
         # board_map
@@ -487,9 +488,10 @@ class Strat3(Strategy):
 
         # look at the neighbors and adjust their distance
         for (x, y) in self.neighbors(position):
-            if self.distance_map[x][y] != np.inf:  # if it's a free_square
-                squares.append((x, y))
-                dist_map[x][y] = 1
+            if self.board_map[x][y] != self.map_values["robot"]:  # we don't go over a robot
+                if self.distance_map[x][y] != np.inf:  # if it's a free_square
+                    squares.append((x, y))
+                    dist_map[x][y] = 1
 
         # searching for the nearest coin
         while distance == -1:
@@ -555,6 +557,9 @@ class Strat3(Strategy):
         robot = observation.robot(robot_id)
         position = self.numpyPosition(tuple(robot.position))  # get the position of the robot
 
+        if robot.penalty > 0:
+            self.print("bugggg")
+
         # if the robot has no specific path, we look if we can assign one to it
         if self.path[robot_id] == []:
             # the robot has a coin but doesn't have the path to go home -> we assign the path to go to the home_base
@@ -562,6 +567,7 @@ class Strat3(Strategy):
                 path = self.pathHomeBase(position)
                 if path != []:  # should be the case since the robot is on a valid position
                     self.path[robot_id] = [path[0]]  # we put only the next move, to avoid the problem of skipped moves
+                    #self.print("pathHomeBase_home_base: ", position, path, robot_id, self.path)
 
             # if the robot has no coin, we look if he can search a free coin (not already assigned to another robot)
             else:
@@ -578,7 +584,7 @@ class Strat3(Strategy):
 
         # exploration : no coins to search or to bring back home
         move = self.exploration(position)
-        self.print("exploration :", move, ", robot : ", robot_id)
+        #self.print("exploration :", move, ", robot : ", robot_id)
         return move
 
         #return None  # should not happen
