@@ -278,7 +278,7 @@ class Strat3(Strategy):
 
     # after chosen move, we actualize the map with the future position of the robot
     def actualizeRobotAfterMove(self, robot_id, position, next_position):
-        self.print("actualizeRobotAfterMove :", robot_id, position, next_position)
+        #self.print("actualizeRobotAfterMove :", robot_id, position, next_position)
         old_x, old_y = position
         x, y = next_position
         # board_map
@@ -567,14 +567,14 @@ class Strat3(Strategy):
                 path = self.pathHomeBase(position)
                 if path != []:  # should be the case since the robot is on a valid position
                     self.path[robot_id] = [path[0]]  # we put only the next move, to avoid the problem of skipped moves
-                    #self.print("pathHomeBase_home_base: ", position, path, robot_id, self.path)
+                    self.print("pathHomeBase_home_base: ", position, path, robot_id, self.path)
 
             # if the robot has no coin, we look if he can search a free coin (not already assigned to another robot)
             else:
                 dist, pos, path = self.distanceCoin(position)
                 if dist > 0:  # if we found a free coin
                     self.path[robot_id] = [path[0]]  # we put only the next move, to avoid the problem of skipped moves
-                    #self.print("pathHomeBase_coin: ", position, path, robot_id, self.path)
+                    self.print("pathHomeBase_coin: ", position, path, robot_id, self.path)
 
         # if the robot should follow a specific path
         if self.path[robot_id] != []:
@@ -584,7 +584,7 @@ class Strat3(Strategy):
 
         # exploration : no coins to search or to bring back home
         move = self.exploration(position)
-        #self.print("exploration :", move, ", robot : ", robot_id)
+        self.print("exploration :", move, ", robot : ", robot_id)
         return move
 
         #return None  # should not happen
@@ -627,35 +627,9 @@ class Strat3(Strategy):
 
     # the path to our home_base
     def pathHomeBase(self, position):
-        """x, y = position
-        path = []
-        #self.print("pathHomeBase")
-        self.print("pHB pos : ", position)
-        #self.print(self.distance_map)
-        self.print(self.board_map)
-        #self.print(self.robots_position)
-
-        while self.distance_map[x][y] != 0:
-            dist = self.distance_map[x][y]
-            if dist != np.inf and dist != -1:  # if it's an evaluated free_square
-                nghb = self.neighbors((x, y))  # the neighbors of (x, y)
-                for (i, j) in nghb:
-                    if self.board_map[i][j] != self.map_values["robot"]:  # we can't go over a robot
-                        dist2 = self.distance_map[i][j]
-                        if dist2 != np.inf and dist2 == dist - 1:  # if it's a free_square which is closer to our home_base
-                            path.append((i, j))
-                            x, y = i, j  # we change the current position
-                            break
-            else:
-                self.print("ERROR : pathHomeBase, the position doesn't correspond to a free_square")
-                self.print(position, (x, y))
-                self.print(self.distance_map)
-                return []
-        #return path"""
-
         robot_x, robot_y = position  # already numpyPosition
-        distance = -1  # distance to the nearest coin
-        pos = (-1, -1)  # position of the nearest coin
+        distance = -1  # distance to the nearest home_base
+        pos = (-1, -1)  # position of the nearest home_base
         dist_map = np.full(self.shape, np.inf)
         dist_map[robot_x][robot_y] = 0  # distance from our robot to itself
         squares = []  # list of the squares/boxes that will be evaluated
@@ -674,7 +648,7 @@ class Strat3(Strategy):
                 break
             x, y = squares.pop(0)  # BFS
             dist = dist_map[x][y]
-            # if there is a coin
+            # if there is our home_base
             if self.board_map[x][y] == self.map_values["home_base"]:
                 distance = dist
                 pos = (x, y)
@@ -689,7 +663,43 @@ class Strat3(Strategy):
                         squares.append((i, j))
                         dist_map[i][j] = dist + 1
 
-        # the path from the coin to the robot
+        # when the something (like robots) block the way back tot he home_base
+        else:
+            dist = self.distance_map[robot_x][robot_y]  # the distance to our home_base
+            distance = -1  # distance of the secured path
+            length = min(5, dist-2)  # the length of the secure path to our home_base
+            x, y = robot_x, robot_y
+            dist_map = np.full(self.shape, np.inf)
+            dist_map[robot_x][robot_y] = 0  # distance from our robot to itself
+            squares = []  # list of the squares/boxes that will be evaluated
+            path = []
+
+            # look at the neighbors and adjust their distance
+            for (x, y) in self.neighbors(position):
+                if self.board_map[x][y] == self.map_values["free_square"] \
+                        or self.board_map[x][y] == self.map_values["home_base"]:  # if it's a free_square
+                    squares.append((x, y))
+                    dist_map[x][y] = 1
+
+            # look at a way of the good length
+            while distance == -1:
+                if len(squares) == 0:
+                    break
+                x, y = squares.pop(0)  # BFS
+                dist = dist_map[x][y]
+                if self.distance_map[x][y] == dist - length:
+                    distance = length
+                    pos = (x, y)
+                nghb = self.neighbors((x, y))
+                for (i, j) in nghb:
+                    # if we don't have already visit it
+                    if self.board_map[i][j] == self.map_values["free_square"] \
+                            or self.board_map[i][j] == self.map_values["home_base"]:  # if it's a free_square
+                        if dist_map[i][j] == np.inf:  # we don't want to make a loop
+                            squares.append((i, j))
+                            dist_map[i][j] = dist + 1
+
+        # the path from the robot to the home_base
         if pos != (-1, -1):  # if a home_base were found
             path.append(pos)  # we add the home_base's position
             while path[-1] != position:  # the path is incomplete (don't reach the robot yet)
