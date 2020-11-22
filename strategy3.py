@@ -124,13 +124,14 @@ class Strat3(Strategy):
             ### Choice of the best action
             #move = self.bestMove(observation, robot)  # we get the best move
             move = self.nextMove(observation, robot_id)  # we get the next move
-            action.move(robot_id, move)  # set move action
-            # actualize robot position
-            next_position = tuple(np.array(self.numpyPosition(position))
+            if move is not None:
+                action.move(robot_id, move)  # set move action
+                # actualize robot position
+                next_position = tuple(np.array(self.numpyPosition(position))
                                   + np.array(self.numpyPosition(self.dir2coord(move))))
-            self.actualizeRobotAfterMove(robot_id, self.numpyPosition(position), next_position)
-            if self.detectionNextMove(position, move):  # if there is something to detect after the move
-                action.detect(robot_id)
+                self.actualizeRobotAfterMove(robot_id, self.numpyPosition(position), next_position)
+                if self.detectionNextMove(position, move):  # if there is something to detect after the move
+                    action.detect(robot_id)
 
         #self.print(f"step {self.current_step} : board_map")
         #self.print(self.board_map)
@@ -563,6 +564,9 @@ class Strat3(Strategy):
             if robot.has_item:
                 path = self.pathHomeBase(position)
                 if path != []:  # should be the case since the robot is on a valid position
+                    if path == "stay":
+                        move = None
+                        return move
                     self.path[robot_id] = [path[0]]  # we put only the next move, to avoid the problem of skipped moves
                     self.print("pathHomeBase: ", position, path, robot_id, self.path)
 
@@ -661,15 +665,18 @@ class Strat3(Strategy):
                         dist_map[i][j] = dist + 1
 
         # when the something (like robots) block the way back tot he home_base
-        else:
-            dist = self.distance_map[robot_x][robot_y]  # the distance to our home_base
+        if pos == (-1, -1):
+            dist_robot = self.distance_map[robot_x][robot_y]  # the distance to our home_base
             distance = -1  # distance of the secured path
-            length = min(5, dist-2)  # the length of the secure path to our home_base
-            x, y = robot_x, robot_y
+            length = min(5, dist_robot-2)  # the length of the secure path to our home_base
             dist_map = np.full(self.shape, np.inf)
             dist_map[robot_x][robot_y] = 0  # distance from our robot to itself
             squares = []  # list of the squares/boxes that will be evaluated
             path = []
+
+            # we are waiting newt to an occupied home_base
+            if dist_robot == 1:
+                return "stay"
 
             # look at the neighbors and adjust their distance
             for (x, y) in self.neighbors(position):
@@ -684,9 +691,10 @@ class Strat3(Strategy):
                     break
                 x, y = squares.pop(0)  # BFS
                 dist = dist_map[x][y]
-                if self.distance_map[x][y] == dist - length:
-                    distance = length
+                if self.distance_map[x][y] <= dist_robot - length:
+                    distance = dist_robot - self.distance_map[x][y]
                     pos = (x, y)
+                    break
                 nghb = self.neighbors((x, y))
                 for (i, j) in nghb:
                     # if we don't have already visit it
