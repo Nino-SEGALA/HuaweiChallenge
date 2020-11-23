@@ -60,8 +60,11 @@ class Strat3(Strategy):
         self.path = [[] for r in range(self.num_robots)]
         # If the robot reserve a coin for him (and will search it) | we stock the position of the coin
         self.robot_coin = [(-1, -1) for r in range(self.num_robots)]
+        # robot_id of the robots which will place fake_coins near the opponent home_base
+        self.robot_fake_coin = [0]  # the first robot will places fake_coins
+        # we store the last positions of our robots to don't stay stuck while exploring
+        self.explore_position = [[] for r in range(self.num_robots)]
 
-        self.print(self.map_values["free_square"])
 
     def step(self, observation):
         ''' Called every time an observation has been received
@@ -591,7 +594,7 @@ class Strat3(Strategy):
             return move  # we return the move corresponding to the path the robot has to follow
 
         # exploration : no coins to search or to bring back home
-        move = self.exploration(position)
+        move = self.exploration(robot_id, position)
         self.print("exploration :", move, ", robot : ", robot_id)
         return move
 
@@ -727,18 +730,45 @@ class Strat3(Strategy):
         return path
 
     # exploration strategy
-    def exploration(self, position):
+    def exploration(self, robot_id, position):
+        number_past_moves = 5  # we try to not go into one of the last 5 positions of our exploring robot
         x, y = position  # already numpyPosition
 
+        # we keep the 5 last positions (should already be the case)
+        while len(self.explore_position[robot_id]) > 5:
+            self.explore_position[robot_id].pop(0)
+
+        # we define the direction priority
         if self.home_base_positions[0] == (1, 1):  # we play at the top
             directions = ["right", "down", "left", "up"]
+            if robot_id in self.robot_fake_coin:  # if the robots try to find a path to the opponent home_base
+                directions = ["down", "left", "right", "up"]
         else:  # we play at the bottom
             directions = ["right", "up", "left", "down"]
+            if robot_id in self.robot_fake_coin:  # if the robots try to find a path to the opponent home_base
+                directions = ["up", "left", "right", "down"]
+
+        # we look at the possible moves
+        move, importance = None, -1  # the chosen move, the importance of the move (avoid the last positions)
         for d in directions:
             new_x, new_y = tuple(np.array(position) + np.array(self.numpyPosition(self.dir2coord(d))))
             if self.board_map[new_x][new_y] == self.map_values["free_square"]:
-                move = d
-                return move
+                # we assign the importance of the new position
+                impt = number_past_moves + 2
+                for i in range(len(self.explore_position[robot_id])):
+                    if self.explore_position[robot_id][i] == (new_x, new_y):
+                        impt = i
+                        break
+
+                # if the new importance is the highest, we keep this move
+                if impt > importance:
+                    move = d
+                    importance = impt
+
+        # if we found a move
+        if move is not None:
+            return move
+
         self.print("ERROR : exploration, no valid move founded")
         move = np.random.choice(list(self.directions))
         return move
