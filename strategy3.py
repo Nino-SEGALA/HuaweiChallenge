@@ -557,25 +557,32 @@ class Strat3(Strategy):
         # Get robot specific observation
         robot = observation.robot(robot_id)
         position = self.numpyPosition(tuple(robot.position))  # get the position of the robot
+        go_back_home = False  # if not enough energy, we go back home
 
         # if the robot has no specific path, we look if we can assign one to it
         if self.path[robot_id] == []:
+            # if the robot has no coin, we look if he can search a free coin (not already assigned to another robot)
+            if not robot.has_item:
+                dist, pos, path = self.distanceCoin(position)
+                if dist > 0:  # if we found a free coin
+                    x, y = pos
+                    # enough energy to search the coin
+                    enough_energy_coin = robot.energy - dist - 2 * self.distance_map[x][y] > 5
+                    if enough_energy_coin:
+                        self.path[robot_id] = [path[0]]  # we put only the next move, to avoid skipped moves problem
+                        self.print("pathCoin: ", position, path, robot_id, self.path)
+                    else:
+                        go_back_home = True  # not enough energy to search a coin: we go back home
+
             # the robot has a coin but doesn't have the path to go home -> we assign the path to go to the home_base
-            if robot.has_item:
+            if robot.has_item or go_back_home:
                 path = self.pathHomeBase(position)
                 if path != []:  # should be the case since the robot is on a valid position
-                    if path == "stay":
+                    if path == "stay":  # when we wait to have access to the home_base
                         move = None
                         return move
                     self.path[robot_id] = [path[0]]  # we put only the next move, to avoid the problem of skipped moves
                     self.print("pathHomeBase: ", position, path, robot_id, self.path)
-
-            # if the robot has no coin, we look if he can search a free coin (not already assigned to another robot)
-            else:
-                dist, pos, path = self.distanceCoin(position)
-                if dist > 0:  # if we found a free coin
-                    self.path[robot_id] = [path[0]]  # we put only the next move, to avoid the problem of skipped moves
-                    self.print("pathCoin: ", position, path, robot_id, self.path)
 
         # if the robot should follow a specific path
         if self.path[robot_id] != []:
