@@ -65,7 +65,6 @@ class Strat3(Strategy):
         # we store the last positions of our robots to don't stay stuck while exploring
         self.explore_position = [[] for r in range(self.num_robots)]
 
-
     def step(self, observation):
         ''' Called every time an observation has been received
 
@@ -800,6 +799,77 @@ class Strat3(Strategy):
             j += p
             dist += 1  # we are at a distance 1 further
         return dist, self.board_map[i][j]
+
+    # find a way to a place near the opponent home_base and place a fake_coin
+    def pathFakeCoin(self, position):
+        robot_x, robot_y = position
+
+        hx, hy = 1, 1
+        while self.board_map[hx][hy] == self.map_values["home_base"] \
+            or self.board_map[hx][hy] == self.map_values["opponent_home_base"]:
+            hx += 1
+            hy += 1
+        # we play at the top
+        if self.home_base_positions[0] == (1, 1):
+             hx, hy = self.symmetric((hx, hy))
+
+        # we look if there is no path from our home base to the opponent_home_base
+        if self.distance_map[hx][hy] < np.inf or self.distance_map[hx][hy] == 0:
+            return None
+
+        # if there is a path
+        pos = (-1, -1)  # position of our goal
+        dist_map = np.full(self.shape, np.inf)
+        dist_map[robot_x][robot_y] = 0  # distance from our robot to itself
+        squares = []  # list of the squares/boxes that will be evaluated
+        path = []
+
+        # look at the neighbors and adjust their distance
+        for (x, y) in self.neighbors(position):
+            if self.board_map[x][y] != self.map_values["robot"]:  # we don't go over a robot
+                if self.distance_map[x][y] != np.inf:  # if it's a free_square
+                    squares.append((x, y))
+                    dist_map[x][y] = 1
+
+        # searching for the path to the opponent_home_base
+        while len(squares) > 0:
+            x, y = squares.pop(0)  # BFS
+            dist = dist_map[x][y]
+            nghb = self.neighbors((x, y))
+            for (i, j) in nghb:
+                # if we don't have already visit it
+                if dist_map[i][j] == np.inf:
+                    if self.board_map[i][j] != self.map_values["robot"]\
+                            and self.board_map[i][j] != self.map_values["coin"]\
+                            and self.board_map[i][j] != self.map_values["fake_coin"]:  # we go only over free_square
+                        if self.distance_map[i][j] != np.inf:  # if it's a free_square
+                            squares.append((i, j))
+                            dist_map[i][j] = dist + 1
+
+        # looking for our goal
+        dist = np.inf
+        for i in range(self.shape[0]):
+            for j in range(self.shape[1]):
+                if dist_map[i][j] < np.inf:  # accessible
+                    if (hx + hy) - (i + j) < dist:
+                        dist = (hx + hy) - (i + j)
+                        pos = (i, j)
+
+        # the path from the robot to our goal
+        if pos != (-1, -1):  # if a path were found
+            path.append(pos)  # we add the goal's position
+            while path[-1] != position:  # the path is incomplete (don't reach the robot yet)
+                x, y = path[-1]
+                nghb = self.neighbors(path[-1])  # neighbors of the last square
+                for (i, j) in nghb:
+                    if dist_map[i][j] == dist_map[x][y] - 1:  # we find the path to the robot
+                        path.append((i, j))
+                        break
+            path.pop()  # we delete the position of the robot of the path
+            path.reverse()  # we reverse it to have the path from the robot to our goal
+            path.pop()  # we delete the last move (we will place a fake_coin there)
+
+        return path
 
 
 # think about this problems after
