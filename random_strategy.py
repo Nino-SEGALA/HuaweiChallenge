@@ -13,7 +13,7 @@ from robot_explorers import Strategy
 class Random(Strategy):
     '''
     Implementation of an simple strategy based on random movement
-    (does not follow optimal path to coin even when in direct veiw)
+    (does not follow optimal path to coin even when in direct view)
 
     Attributes:
         directions (list): List of possible directions for all actions

@@ -1,0 +1,4 @@
+{
+    "terminal.integrated.automationShell.linux": "",
+    "terminal.integrated.shell.osx": "/usr/local/bin/zsh"
+}

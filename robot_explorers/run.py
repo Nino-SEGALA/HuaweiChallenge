@@ -27,7 +27,7 @@ parser.add_argument('--about', action='store_true', help='Print info and license
 
 ## Args
 args = parser.parse_args()
-max_energy = 100
+max_energy = 700
 
 # Print about
 if args.about:
@@ -92,10 +92,10 @@ graphics_cb = gui.draw if args.visualize or args.headless else None
 # }
 
 config_board = {
-    'shape': (20, 25),
+    'shape': (20, 25), # height, width
     'num_robots': 3,
     'energy': max_energy,
-    'num_hob': 3,
+    'num_hob': 5,
     'wall_density': 0.40,
     'num_coins_start': 35,
     'tau': 30,
