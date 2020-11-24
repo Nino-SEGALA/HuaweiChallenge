@@ -653,11 +653,13 @@ class Strat3(Strategy):
         path = []
 
         # look at the neighbors and adjust their distance
-        for (x, y) in self.neighbors(position):
+        """for (x, y) in self.neighbors(position):
             if self.board_map[x][y] == self.map_values["free_square"]\
                     or self.board_map[x][y] == self.map_values["home_base"]:  # if it's a free_square
                 squares.append((x, y))
-                dist_map[x][y] = 1
+                dist_map[x][y] = 1"""
+
+        squares.append(position)
 
         # searching for the nearest home_base
         while distance == -1:
@@ -680,7 +682,7 @@ class Strat3(Strategy):
                         squares.append((i, j))
                         dist_map[i][j] = dist + 1
 
-        # when the something (like robots) block the way back tot he home_base
+        # when something (like robots) block the way back to the home_base
         if pos == (-1, -1):
             dist_robot = self.distance_map[robot_x][robot_y]  # the distance to our home_base
             distance = -1  # distance of the secured path
@@ -842,13 +844,15 @@ class Strat3(Strategy):
         path = []
 
         # look at the neighbors and adjust their distance
-        for (x, y) in self.neighbors(position):
+        """for (x, y) in self.neighbors(position):
             #if self.board_map[x][y] != self.map_values["robot"]:  # we don't go over a robot
             if self.board_map[x][y] == self.map_values["free_square"]\
                     or self.board_map[x][y] != self.map_values["home_base"]:
                 if self.distance_map[x][y] != np.inf:  # if it's a free_square
                     squares.append((x, y))
-                    dist_map[x][y] = 1
+                    dist_map[x][y] = 1"""
+
+        squares.append(position)
 
         # searching for the path to the opponent_home_base
         while len(squares) > 0:
@@ -858,9 +862,11 @@ class Strat3(Strategy):
             for (i, j) in nghb:
                 # if we don't have already visit it
                 if dist_map[i][j] == np.inf:
-                    if self.board_map[i][j] != self.map_values["robot"]\
+                    """if self.board_map[i][j] != self.map_values["robot"]\
                             and self.board_map[i][j] != self.map_values["coin"]\
-                            and self.board_map[i][j] != self.map_values["fake_coin"]:  # we go only over free_square
+                            and self.board_map[i][j] != self.map_values["fake_coin"]:  # we go only over free_square"""
+                    if self.board_map[i][j] == self.map_values["free_square"] \
+                            or self.board_map[i][j] == self.map_values["home_base"]:
                         if self.distance_map[i][j] != np.inf:  # if it's a free_square
                             squares.append((i, j))
                             dist_map[i][j] = dist + 1
