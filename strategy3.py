@@ -536,8 +536,8 @@ class Strat3(Strategy):
             path.pop()  # we delete the position of the robot of the path
             path.reverse()  # we reverse it to have the path from the robot to the coin
 
-            next_x, next_y = path[0]
-            self.print("distanceCoin : ", position, pos, path, self.board_map[next_x][next_y])
+            #next_x, next_y = path[0]
+            #self.print("distanceCoin : ", position, pos, path, self.board_map[next_x][next_y])
 
         return distance, pos, path
 
@@ -785,13 +785,14 @@ class Strat3(Strategy):
     def detectionNextMove(self, position, move):
         x, y = self.numpyPosition(position)
         next_x, next_y = tuple(np.array((x, y)) + np.array(self.numpyPosition(self.dir2coord(move))))
+
+        # if the chosen move is strange
         if self.board_map[next_x][next_y] != self.map_values["free_square"]\
                 and self.board_map[next_x][next_y] != self.map_values["home_base"]\
                 and self.board_map[next_x][next_y] != self.map_values["coin"]:
-            self.print("ERROR : detectionNextMove : invalid move given", (x, y), move)
-            self.print(self.board_map)
             return False
 
+        # what we want to detect
         detectObj = [self.map_values["unidentified"], self.map_values["unknown"]]
 
         directions = ["right", "down", "left", "up"]
