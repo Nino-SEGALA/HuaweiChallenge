@@ -61,7 +61,7 @@ class Strat3(Strategy):
         # If the robot reserve a coin for him (and will search it) | we stock the position of the coin
         self.robot_coin = [(-1, -1) for r in range(self.num_robots)]
         # robot_id of the robots which will place fake_coins near the opponent home_base
-        self.robot_fake_coin = []  # the first robot will places fake_coins
+        self.robot_fake_coin = [0]  # the first robot will places fake_coins
         # we store the last positions of our robots to don't stay stuck while exploring
         self.explore_position = [[] for r in range(self.num_robots)]
 
