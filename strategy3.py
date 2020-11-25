@@ -61,7 +61,7 @@ class Strat3(Strategy):
         # If the robot reserve a coin for him (and will search it) | we stock the position of the coin
         self.robot_coin = [(-1, -1) for r in range(self.num_robots)]
         # robot_id of the robots which will place fake_coins near the opponent home_base
-        self.robot_fake_coin = [0]  # the first robot will places fake_coins
+        self.robot_fake_coin = []  # the first robot will places fake_coins
         # we store the last positions of our robots to don't stay stuck while exploring
         self.explore_position = [[] for r in range(self.num_robots)]
 
@@ -82,6 +82,7 @@ class Strat3(Strategy):
         #self.print('added_coins: {}'.format(observation.added_coins))
 
         # increase the step number
+
         self.current_step += 1
         # if we are at step 1 we identified our home_base
         if self.current_step == 1:
@@ -92,6 +93,8 @@ class Strat3(Strategy):
 
         # Initialize empty action
         action = self.action()
+
+        self.print("knn", self.knowMap())
 
         # Loop over robots / Actualization of the board_map and distance_map
         for robot_id in range(self.num_robots):
@@ -480,7 +483,7 @@ class Strat3(Strategy):
                 # what with the "unidentified" objects ?
                 if self.distance_map[x][y] != np.inf:  # if we know what is in the position (x, y)
                     prop += 1
-        return prop / (n - 2 * p - 2)  # the dimensions of the distance_map without the borders
+        return prop / ((n - 2) * (p - 2))  # the dimensions of the distance_map without the borders
 
     # Calculate the shortest distance to a coin
     def distanceCoin(self, position):
@@ -596,12 +599,12 @@ class Strat3(Strategy):
                 if dist > 0:  # if we found a free coin
                     x, y = pos
                     # enough energy to search the coin
-                    enough_energy_coin = robot.energy - dist - 2 * self.distance_map[x][y] > 5
-                    if enough_energy_coin:
-                        self.path[robot_id] = [path[0]]  # we put only the next move, to avoid skipped moves problem
-                        self.print("pathCoin: ", position, path, robot_id, self.path)
-                    else:
-                        go_back_home = True  # not enough energy to search a coin: we go back home
+                    # enough_energy_coin = robot.energy - dist - 2 * self.distance_map[x][y] > 5
+                    # if enough_energy_coin:
+                    self.path[robot_id] = [path[0]]  # we put only the next move, to avoid skipped moves problem
+                    self.print("pathCoin: ", position, path, robot_id, self.path)
+                    # else:
+                    #     go_back_home = True  # not enough energy to search a coin: we go back home
 
             # the robot has a coin but doesn't have the path to go home -> we assign the path to go to the home_base
             if robot.has_item or go_back_home:
@@ -759,6 +762,7 @@ class Strat3(Strategy):
 
     # exploration strategy
     def exploration(self, robot_id, position):
+        self.print("EXPLORE", self.explore_position)
         number_past_moves = 5  # we try to not go into one of the last 5 positions of our exploring robot
         x, y = position  # already numpyPosition
 
@@ -778,6 +782,7 @@ class Strat3(Strategy):
 
         # we look at the possible moves
         move, importance = None, -1  # the chosen move, the importance of the move (avoid the last positions)
+        move_x, move_y = None, None
         for d in directions:
             new_x, new_y = tuple(np.array(position) + np.array(self.numpyPosition(self.dir2coord(d))))
             if self.board_map[new_x][new_y] == self.map_values["free_square"]:
@@ -785,16 +790,19 @@ class Strat3(Strategy):
                 impt = number_past_moves + 2
                 for i in range(len(self.explore_position[robot_id])):
                     if self.explore_position[robot_id][i] == (new_x, new_y):
-                        impt = i  #todo other way
+                        impt -= i  #todo other way
                         break
 
                 # if the new importance is the highest, we keep this move
                 if impt > importance:
                     move = d
                     importance = impt
+                    move_x = new_x
+                    move_y = new_y
 
         # if we found a move
         if move is not None:
+            self.explore_position[robot_id].append((move_x, move_y))
             return move
 
         self.print("ERROR : exploration, no valid move founded")

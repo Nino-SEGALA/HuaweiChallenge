@@ -95,14 +95,14 @@ config_board = {
     'shape': (20, 25),
     'num_robots': 3, #1
     'energy': max_energy,
-    'num_hob': 3,
+    'num_hob': 6,
     'wall_density': 0.40,
     'num_coins_start': 35,
     'tau': 30,
     'sigma': 4,
     'range_coins_drop': (1, 4),
     'shape_coin_drop_box': (3, 4),
-    'random_seed': 53897, #1117, #11111, #53897
+    'random_seed': 11111, #53897 #53897, 
     'graphics_cb': graphics_cb
 }
 
