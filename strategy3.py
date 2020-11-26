@@ -133,6 +133,7 @@ class Strat3(Strategy):
                 if self.detectionNextMove(position, move):  # if there is something to detect after the move
                     action.detect(robot_id)
                 self.actualizeRobotAfterMove(robot_id, self.numpyPosition(position), next_position)
+                self.explore_position[robot_id].append(next_position)  # we store our next_position for exploration
             if place_fake_coin:  # if we have a direction to place a fake_coin
                 action.fake_coin(robot_id, place_fake_coin)
                 self.actualizeFakeCoin(position, place_fake_coin)  # we store the place were we put fake_coins
@@ -141,7 +142,7 @@ class Strat3(Strategy):
                 # todo robots collecting fake_coins
 
         #self.print(f"step {self.current_step} : board_map")
-        self.print(self.board_map)
+        #self.print(self.board_map)
 
         return action
 
@@ -796,13 +797,15 @@ class Strat3(Strategy):
                 impt = number_past_moves + 2
                 for i in range(len(self.explore_position[robot_id])):
                     if self.explore_position[robot_id][i] == (new_x, new_y):
-                        impt = i
+                        impt -= i  # high importance for new moves (or old ones)
                         break
 
                 # if the new importance is the highest, we keep this move
                 if impt > importance:
                     move = d
                     importance = impt
+
+        self.print("exploration :", robot_id, position, self.explore_position[robot_id], move)
 
         # if we found a move
         if move is not None:
