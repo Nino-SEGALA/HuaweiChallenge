@@ -61,7 +61,7 @@ class Strat3(Strategy):
         # If the robot reserve a coin for him (and will search it) | we stock the position of the coin
         self.robot_coin = [(-1, -1) for r in range(self.num_robots)]
         # robot_id of the robots which will place fake_coins near the opponent home_base
-        self.robot_fake_coin = [0]  # the first robot will places fake_coins
+        self.robot_fake_coin = []  # the first robot will places fake_coins
         # we store the last positions of our robots to don't stay stuck while exploring
         self.explore_position = [[] for r in range(self.num_robots)]
 
@@ -254,7 +254,8 @@ class Strat3(Strategy):
                 sym_obj = self.symmetricObject(obj)  # the symmetrical corresponding object
                 # don't replace other robots/coins with unidentified
                 if self.board_map[x][y] not in (self.map_values["robot"],
-                                                self.map_values["coin"]):
+                                                self.map_values["coin"],
+                                                self.map_values["fake_coin"]):
                     self.board_map[x][y] = self.map_values[obj]
                     self.board_map[sym_x][sym_y] = self.map_values[sym_obj]
 
@@ -591,6 +592,7 @@ class Strat3(Strategy):
                         if dir:
                             return None, dir  # we return the direction in which we want to place a fake_coin
 
+        place_fake_coin = None # dont put fake coin
         # if the robot has no specific path, we look if we can assign one to it
         if self.path[robot_id] == []:
             # if the robot has no coin, we look if he can search a free coin (not already assigned to another robot)
@@ -600,9 +602,17 @@ class Strat3(Strategy):
                     x, y = pos
                     # enough energy to search the coin
                     # enough_energy_coin = robot.energy - dist - 2 * self.distance_map[x][y] > 5
+                    enough_energy_coin = robot.energy - dist - 2 * self.distance_map[x][y]
                     # if enough_energy_coin:
                     self.path[robot_id] = [path[0]]  # we put only the next move, to avoid skipped moves problem
                     self.print("pathCoin: ", position, path, robot_id, self.path)
+
+                    # If you have enough energy to go back home plus an extra between 40 and 60, why not place a fake coin!
+                    if 40 < enough_energy_coin < 60 and dist == 1:
+                        place_fake_coin, (fcoin_x, fcoiny) = self.placeFakeCoin(pos)
+                        if place_fake_coin and (fcoin_x, fcoiny):
+                            self.board_map[fcoin_x][fcoiny] = self.map_values['fake_coin']
+
                     # else:
                     #     go_back_home = True  # not enough energy to search a coin: we go back home
 
@@ -620,7 +630,7 @@ class Strat3(Strategy):
         if self.path[robot_id] != []:
             next_position = self.path[robot_id].pop(0)  # get the next position and remove it from path
             move = self.coord2dir(position, next_position)  # the move to go to next_position
-            return move, False  # we return the move corresponding to the path the robot has to follow
+            return move, place_fake_coin  # we return the move corresponding to the path the robot has to follow
 
         # exploration : no coins to search or to bring back home
         move = self.exploration(robot_id, position)
@@ -948,9 +958,9 @@ class Strat3(Strategy):
         for d in directions:
             new_x, new_y = tuple(np.array(position) + np.array(self.numpyPosition(self.dir2coord(d))))  # neighbor
             if self.board_map[new_x][new_y] == self.map_values["free_square"]:
-                return d
+                return d, (new_x, new_y)
 
-        return None
+        return None, None
 
 # think about this problems after
 # delete coin_position in self.robot_coin after picking it up (if a new coin appear there it's free)
