@@ -106,6 +106,7 @@ class Strat3(Strategy):
             self.actualizeRobotPosition(observation, robot_id)  # we actualize the position of our robot on the map
 
         # self.print(self.board_map[0:5])
+        self.print(self.board_map[6])
 
         # Loop over robots / Choose action
         for robot_id in range(self.num_robots):
@@ -144,7 +145,7 @@ class Strat3(Strategy):
                 # todo robots collecting fake_coins
 
         # self.print(f"step {self.current_step} : board_map")
-        self.print(self.board_map[7])
+        self.print(self.board_map[6])
 
         return action
 
@@ -221,7 +222,7 @@ class Strat3(Strategy):
         dir_x, dir_y = self.numpyPosition(self.dir2coord(direction))  # we get the direction (as a tuple)
 
         # we actualize the board_map and the distance_map with the value of the free_squares
-        for i in range(radar.distance):
+        for i in range(1, radar.distance):  # start at 1? or no?
             x = robot_x + i * dir_x
             y = robot_y + i * dir_y
             sym_x, y = self.symmetric((x, y))  # the symmetric position
@@ -238,7 +239,9 @@ class Strat3(Strategy):
                     sym_obj = self.symmetricObject(obj)  # the symmetrical corresponding object
                     # board_map
                     self.board_map[x][y] = self.map_values[obj]
-                    self.board_map[sym_x][y] = self.map_values[sym_obj]
+                    if self.board_map[sym_x][y] not in (self.map_values["robot"],
+                                                        self.map_values["coin"], self.map_values["fake_coin"]):
+                        self.board_map[sym_x][y] = self.map_values[sym_obj]
                     # distance_map
                     self.distance_map[x][y] = -1  # distance to home_base isn't evaluated
                     self.distance_map[sym_x][y] = -1  # distance to home_base isn't evaluated
@@ -258,7 +261,6 @@ class Strat3(Strategy):
                 # don't replace other robots/coins with unidentified
                 if self.board_map[x][y] not in (self.map_values["robot"],
                                                 self.map_values["coin"], self.map_values["fake_coin"]):
-                    self.print("FixBug :", self.board_map[x][y])
                     self.board_map[x][y] = self.map_values[obj]
                     if self.board_map[sym_x][sym_y] not in (self.map_values["robot"],
                                                     self.map_values["coin"], self.map_values["fake_coin"]):
@@ -274,7 +276,8 @@ class Strat3(Strategy):
                             self.board_map[sym_x][sym_y] = self.map_values[sym_obj]
 
                 else:
-                    if obj == "robot":  # we don't want to actualize our map with the position of the robots by detection
+                    # we don't want to actualize our map with the position of the opponent robots by detection
+                    if obj == "robot" and self.board_map[x][y] != self.map_values["robot"]:  # not our robot
                         obj = "free_square"
                     sym_obj = self.symmetricObject(obj)  # the symmetrical corresponding object
                     self.board_map[x][y] = self.map_values[obj]
