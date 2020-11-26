@@ -49,7 +49,7 @@ class Strat3(Strategy):
         # Count at which step we are
         self.current_step = 0
         # Position of our home_base
-        #self.home_base_position = (1, 1)  # Will be adapted during the step 1
+        # self.home_base_position = (1, 1)  # Will be adapted during the step 1
         # Position of our robots
         self.robots_position = [[] for r in range(self.num_robots)]
         # Position where our robots should be on the next step
@@ -79,9 +79,9 @@ class Strat3(Strategy):
                     Container with all robots actions
         '''
 
-        #self.print('score: {}'.format(observation.score))
-        #self.print('opponent score: {}'.format(observation.opponent_score))
-        #self.print('added_coins: {}'.format(observation.added_coins))
+        # self.print('score: {}'.format(observation.score))
+        # self.print('opponent score: {}'.format(observation.opponent_score))
+        # self.print('added_coins: {}'.format(observation.added_coins))
 
         # increase the step number
         self.current_step += 1
@@ -99,13 +99,13 @@ class Strat3(Strategy):
         for robot_id in range(self.num_robots):
             # Get robot specific observation
             robot = observation.robot(robot_id)
-            #self.print('Robot {}:'.format(robot_id))
+            # self.print('Robot {}:'.format(robot_id))
             for direction in self.directions:
                 radar = observation.radar(robot_id, direction)  # get radar
                 self.actualizeMap(robot, direction, radar)  # we actualize the board_map and distance_map
             self.actualizeRobotPosition(observation, robot_id)  # we actualize the position of our robot on the map
 
-        #self.print(self.board_map[0:5])
+        # self.print(self.board_map[0:5])
 
         # Loop over robots / Choose action
         for robot_id in range(self.num_robots):
@@ -115,23 +115,23 @@ class Strat3(Strategy):
 
             ### Robot is penalized, do nothing
             if robot.penalty > 0:
-                #self.print('penalty: {}'.format(robot.penalty))
+                # self.print('penalty: {}'.format(robot.penalty))
                 continue
 
             ### In home base and low on energy
             if robot.home_base and robot.energy < (self.max_energy / 3):
-                #self.print('recharge')
+                # self.print('recharge')
                 action.recharge(robot_id)  # recharge
                 continue
 
             ### Choice of the best action
-            #move = self.bestMove(observation, robot)  # we get the best move
+            # move = self.bestMove(observation, robot)  # we get the best move
             move, place_fake_coin = self.nextMove(observation, robot_id)  # we get the next move
             if move is not None:
                 action.move(robot_id, move)  # set move action
                 # actualize robot position
                 next_position = tuple(np.array(self.numpyPosition(position))
-                                  + np.array(self.numpyPosition(self.dir2coord(move))))
+                                      + np.array(self.numpyPosition(self.dir2coord(move))))
                 if self.detectionNextMove(position, move):  # if there is something to detect after the move
                     action.detect(robot_id)
                 self.actualizeRobotAfterMove(robot_id, self.numpyPosition(position), next_position)
@@ -143,8 +143,8 @@ class Strat3(Strategy):
                 # todo fake_coins placed near home_base
                 # todo robots collecting fake_coins
 
-        #self.print(f"step {self.current_step} : board_map")
-        #self.print(self.board_map)
+        # self.print(f"step {self.current_step} : board_map")
+        self.print(self.board_map[7])
 
         return action
 
@@ -203,7 +203,7 @@ class Strat3(Strategy):
 
     # Return the symmetric object
     def symmetricObject(self, obj):
-        #self.map_values = {"home_base": 'H', "opponent_home_base": 'O', "wall": 'W', "coin": 'C', "fake_coin": 'F',
+        # self.map_values = {"home_base": 'H', "opponent_home_base": 'O', "wall": 'W', "coin": 'C', "fake_coin": 'F',
         #                   "robot": 'R', "free_square": 0, "unidentified": 'U', "unknown": 'X'}  # other value?
 
         symmetric = [["home_base", "opponent_home_base"], ["opponent_home_base", "home_base"], ["wall", "wall"],
@@ -257,23 +257,30 @@ class Strat3(Strategy):
                 sym_obj = self.symmetricObject(obj)  # the symmetrical corresponding object
                 # don't replace other robots/coins with unidentified
                 if self.board_map[x][y] not in (self.map_values["robot"],
-                        self.map_values["coin"], self.map_values["fake_coin"]):
+                                                self.map_values["coin"], self.map_values["fake_coin"]):
+                    self.print("FixBug :", self.board_map[x][y])
                     self.board_map[x][y] = self.map_values[obj]
-                    self.board_map[sym_x][sym_y] = self.map_values[sym_obj]
+                    if self.board_map[sym_x][sym_y] not in (self.map_values["robot"],
+                                                    self.map_values["coin"], self.map_values["fake_coin"]):
+                        self.board_map[sym_x][sym_y] = self.map_values[sym_obj]
 
             else:
                 if obj == "coin":  # we don't want to overwrite a fake_coin
                     if self.board_map[x][y] != self.map_values["fake_coin"]:
                         sym_obj = self.symmetricObject(obj)  # the symmetrical corresponding object
                         self.board_map[x][y] = self.map_values[obj]
-                        self.board_map[sym_x][sym_y] = self.map_values[sym_obj]
+                        if self.board_map[sym_x][sym_y] not in (self.map_values["robot"],
+                                                                self.map_values["coin"], self.map_values["fake_coin"]):
+                            self.board_map[sym_x][sym_y] = self.map_values[sym_obj]
 
                 else:
                     if obj == "robot":  # we don't want to actualize our map with the position of the robots by detection
                         obj = "free_square"
                     sym_obj = self.symmetricObject(obj)  # the symmetrical corresponding object
                     self.board_map[x][y] = self.map_values[obj]
-                    self.board_map[sym_x][sym_y] = self.map_values[sym_obj]
+                    if self.board_map[sym_x][sym_y] not in (self.map_values["robot"],
+                                                            self.map_values["coin"], self.map_values["fake_coin"]):
+                        self.board_map[sym_x][sym_y] = self.map_values[sym_obj]
 
             # we detect something corresponding to a new free_square
             if (obj == "free_square" or obj == "coin") and self.distance_map[x][y] == np.inf:  # robot -> free_square
@@ -296,7 +303,7 @@ class Strat3(Strategy):
 
     # after chosen move, we actualize the map with the future position of the robot
     def actualizeRobotAfterMove(self, robot_id, position, next_position):
-        #self.print("actualizeRobotAfterMove :", robot_id, position, next_position)
+        # self.print("actualizeRobotAfterMove :", robot_id, position, next_position)
         old_x, old_y = position
         x, y = next_position
         # board_map
@@ -334,20 +341,21 @@ class Strat3(Strategy):
             self.home_base_positions.append((x, y))
 
         ### we look at the other positions (can be improved !!!)
-        (new_x, new_y) = tuple(np.array(position) + np.array(self.numpyPosition(self.dir2coord("left"))))  # new position
+        (new_x, new_y) = tuple(
+            np.array(position) + np.array(self.numpyPosition(self.dir2coord("left"))))  # new position
         if 0 < new_x < self.shape[0] and 0 < new_y < self.shape[1]:
             self.detectedHomeBase((new_x, new_y))
         # we play at the top
         if self.home_base_positions[0] == (1, 1):  # todo other positions
             (new_x, new_y) = tuple(np.array(position)
                                    + np.array(self.numpyPosition(self.dir2coord("up"))))  # new position
-            if 0 < new_x < self.shape[0]-1 and 0 < new_y < self.shape[1]-1:
+            if 0 < new_x < self.shape[0] - 1 and 0 < new_y < self.shape[1] - 1:
                 self.detectedHomeBase((new_x, new_y))
         # we play at the bottom
         else:
             (new_x, new_y) = tuple(np.array(position)
                                    + np.array(self.numpyPosition(self.dir2coord("down"))))  # new position
-            if 0 < new_x < self.shape[0]-1 and 0 < new_y < self.shape[1]-1:
+            if 0 < new_x < self.shape[0] - 1 and 0 < new_y < self.shape[1] - 1:
                 self.detectedHomeBase((new_x, new_y))
 
     # Calculate the distance to the home-base of every point of the distance_map
@@ -530,9 +538,9 @@ class Strat3(Strategy):
             nghb = self.neighbors((x, y))
             for (i, j) in nghb:
                 # if we don't have already visit it
-                #if self.board_map[i][j] != self.map_values["robot"]:  # we don't go over a robot
+                # if self.board_map[i][j] != self.map_values["robot"]:  # we don't go over a robot
                 if self.board_map[i][j] == self.map_values["free_square"] \
-                        or self.board_map[i][j] == self.map_values["home_base"]\
+                        or self.board_map[i][j] == self.map_values["home_base"] \
                         or self.board_map[i][j] == self.map_values["coin"]:
                     if dist_map[i][j] == np.inf:
                         if self.distance_map[i][j] != np.inf:  # if it's a free_square
@@ -546,14 +554,14 @@ class Strat3(Strategy):
                 x, y = path[-1]
                 nghb = self.neighbors(path[-1])  # neighbors of the last square
                 for (i, j) in nghb:
-                    if dist_map[i][j] == dist_map[x][y]-1:  # we find the path to the robot
+                    if dist_map[i][j] == dist_map[x][y] - 1:  # we find the path to the robot
                         path.append((i, j))
                         break
             path.pop()  # we delete the position of the robot of the path
             path.reverse()  # we reverse it to have the path from the robot to the coin
 
-            #next_x, next_y = path[0]
-            #self.print("distanceCoin : ", position, pos, path, self.board_map[next_x][next_y])
+            # next_x, next_y = path[0]
+            # self.print("distanceCoin : ", position, pos, path, self.board_map[next_x][next_y])
 
         return distance, pos, path
 
@@ -596,11 +604,11 @@ class Strat3(Strategy):
                         if dist > 0:  # if we found a free coin
                             x, y = pos
                             # enough energy to search the coin
-                            #enough_energy_coin = robot.energy - dist - 2 * self.distance_map[x][y] > 5
-                            #if enough_energy_coin:
+                            # enough_energy_coin = robot.energy - dist - 2 * self.distance_map[x][y] > 5
+                            # if enough_energy_coin:
                             self.path[robot_id] = [path[0]]  # we put only the next move
                             self.print("pathCoin: ", position, path, robot_id, self.path)
-                            #else:
+                            # else:
                             #    go_back_home = True  # not enough energy to search a coin: we go back home
 
                     # the robot has a coin but doesn't have the path to go home
@@ -653,7 +661,8 @@ class Strat3(Strategy):
                         if path == "stay":  # when we wait to have access to the home_base
                             move = None
                             return move, False  # we don't place a fake_coin
-                        self.path[robot_id] = [path[0]]  # we put only the next move, to avoid the problem of skipped moves
+                        self.path[robot_id] = [
+                            path[0]]  # we put only the next move, to avoid the problem of skipped moves
                         self.print("pathHomeBase: ", position, path, robot_id, self.path)
 
         # if the robot should follow a specific path
@@ -667,7 +676,7 @@ class Strat3(Strategy):
         self.print("exploration :", move, ", robot : ", robot_id)
         return move, False  # we don't place a fake_coin
 
-        #return None  # should not happen
+        # return None  # should not happen
 
     # gives the move to go to the goal
     def coord2dir(self, pos, goal):
@@ -738,7 +747,7 @@ class Strat3(Strategy):
             nghb = self.neighbors((x, y))
             for (i, j) in nghb:
                 # if we don't have already visit it
-                #if self.board_map[i][j] != self.map_values["robot"]:  # we don't go over a robot
+                # if self.board_map[i][j] != self.map_values["robot"]:  # we don't go over a robot
                 if self.board_map[i][j] == self.map_values["free_square"] \
                         or self.board_map[i][j] == self.map_values["home_base"]:  # if it's a free_square
                     if dist_map[i][j] == np.inf:  # we don't want to make a loop
@@ -749,7 +758,7 @@ class Strat3(Strategy):
         if pos == (-1, -1):
             dist_robot = self.distance_map[robot_x][robot_y]  # the distance to our home_base
             distance = -1  # distance of the secured path
-            length = min(5, dist_robot-2)  # the length of the secure path to our home_base
+            length = min(5, dist_robot - 2)  # the length of the secure path to our home_base
             dist_map = np.full(self.shape, np.inf)
             dist_map[robot_x][robot_y] = 0  # distance from our robot to itself
             squares = []  # list of the squares/boxes that will be evaluated
@@ -851,8 +860,8 @@ class Strat3(Strategy):
         next_x, next_y = tuple(np.array((x, y)) + np.array(self.numpyPosition(self.dir2coord(move))))
 
         # if the chosen move is strange
-        if self.board_map[next_x][next_y] != self.map_values["free_square"]\
-                and self.board_map[next_x][next_y] != self.map_values["home_base"]\
+        if self.board_map[next_x][next_y] != self.map_values["free_square"] \
+                and self.board_map[next_x][next_y] != self.map_values["home_base"] \
                 and self.board_map[next_x][next_y] != self.map_values["coin"]:
             return False
         # and self.board_map[next_x][next_y] != self.map_values["robot"]:  # for the "stay" move
@@ -873,7 +882,7 @@ class Strat3(Strategy):
         x, y = position  # position of the robot at the next step
         n, p = self.numpyPosition(self.dir2coord(direction))  # vector corresponding to the direction
 
-        i, j = x+n, y+p  # the neighbor box
+        i, j = x + n, y + p  # the neighbor box
         dist = 1
         if i < 0 or i > self.shape[0] - 1 or j < 0 or j > self.shape[1] - 1:
             self.print("POSITION POSITION", (x, y), direction, (i, j))
@@ -883,7 +892,7 @@ class Strat3(Strategy):
             i += n
             j += p
             dist += 1  # we are at a distance 1 further
-            if i < 0 or i > self.shape[0]-1 or j < 0 or j > self.shape[1]-1:
+            if i < 0 or i > self.shape[0] - 1 or j < 0 or j > self.shape[1] - 1:
                 self.print("POSITION POSITION", (x, y), direction, (i, j))
                 self.print(self.board_map)
         return dist, self.board_map[i][j]
@@ -894,15 +903,15 @@ class Strat3(Strategy):
 
         hx, hy = 1, 1
         while self.board_map[hx][hy] == self.map_values["home_base"] \
-            or self.board_map[hx][hy] == self.map_values["opponent_home_base"]:
+                or self.board_map[hx][hy] == self.map_values["opponent_home_base"]:
             hx += 1
             hy += 1
-        #to avoid problem with a robot staying on a home_base
+        # to avoid problem with a robot staying on a home_base
         hx += 1
         hy += 1
         # we play at the top
         if self.home_base_positions[0] == (1, 1):
-             hx, hy = self.symmetric((hx, hy))
+            hx, hy = self.symmetric((hx, hy))
 
         self.print("pathFakeCoin :", position, (hx, hy), self.distance_map[hx][hy])
 
@@ -945,9 +954,9 @@ class Strat3(Strategy):
                             squares.append((i, j))
                             dist_map[i][j] = dist + 1
 
-        #self.print("pathFake :", position)
-        #self.print(dist_map)
-        #self.print(self.board_map)
+        # self.print("pathFake :", position)
+        # self.print(dist_map)
+        # self.print(self.board_map)
 
         # looking for our goal todo problem greedy 1 move
         dist = np.inf
@@ -982,7 +991,7 @@ class Strat3(Strategy):
             if energy >= 40:
                 return self.placeFakeCoin(position)
         # if we can place 2 fake_coins or 1
-        if 40-1 < energy < 40+5:  # 2*40-1 < energy < 2*40+5 or
+        if 40 - 1 < energy < 40 + 5:  # 2*40-1 < energy < 2*40+5 or
             return self.placeFakeCoin(position)
 
         return None
@@ -1010,6 +1019,7 @@ class Strat3(Strategy):
         fc_x, fc_y = tuple(np.array((x, y)) + np.array(self.numpyPosition(self.dir2coord(place_fake_coin))))
 
         self.board_map[fc_x][fc_y] = self.map_values["fake_coin"]
+
 
 # think about this problems after
 # delete coin_position in self.robot_coin after picking it up (if a new coin appear there it's free)
