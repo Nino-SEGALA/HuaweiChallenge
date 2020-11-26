@@ -591,12 +591,14 @@ class Strat3(Strategy):
                     return None, dir  # we return the direction in which we want to place a fake_coin
                 path = self.pathFakeCoin(position)  # we look if we can get closer to the home_base
                 if path is not None:  # there is a way to the opponent_home_base
+                    self.print("fake_coin :", position, path)
                     if path != []:
                         self.path[robot_id] = [path[0]]  # we put only the next move, to avoid skipped moves problem
                     # no path were found, we should have reach our goal
                     else:
                         dir = self.placingFakeCoin(position, robot.energy, place=True)  # we place a fake_coin
                         if dir:
+                            self.print("fake_coin 2 :", position, dir)
                             return None, dir  # we return the direction in which we want to place a fake_coin
 
         else:
@@ -805,8 +807,6 @@ class Strat3(Strategy):
                     move = d
                     importance = impt
 
-        self.print("exploration :", robot_id, position, self.explore_position[robot_id], move)
-
         # if we found a move
         if move is not None:
             return move
@@ -875,8 +875,10 @@ class Strat3(Strategy):
         if self.home_base_positions[0] == (1, 1):
              hx, hy = self.symmetric((hx, hy))
 
+        self.print("pathFakeCoin :", position, (hx, hy), self.distance_map[hx][hy])
+
         # we look if there is no path from our home base to the opponent_home_base
-        if self.distance_map[hx][hy] == np.inf or self.distance_map[hx][hy] == 0:
+        if self.distance_map[hx][hy] == np.inf or self.distance_map[hx][hy] < 1:
             return None
 
         # if there is a path
