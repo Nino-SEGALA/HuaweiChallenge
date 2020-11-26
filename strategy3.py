@@ -916,12 +916,16 @@ class Strat3(Strategy):
                             squares.append((i, j))
                             dist_map[i][j] = dist + 1
 
+        #self.print("pathFake :", position)
+        #self.print(dist_map)
+        #self.print(self.board_map)
+
         # looking for our goal todo problem greedy 1 move
         dist = np.inf
         for i in range(self.shape[0]):
             for j in range(self.shape[1]):
                 if dist_map[i][j] < np.inf:  # accessible
-                    if (hx + hy) - (i + j) < dist:
+                    if abs((hx + hy) - (i + j)) < dist:
                         dist = (hx + hy) - (i + j)
                         pos = (i, j)
 
