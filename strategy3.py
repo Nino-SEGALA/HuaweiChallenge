@@ -141,7 +141,7 @@ class Strat3(Strategy):
                 # todo robots collecting fake_coins
 
         #self.print(f"step {self.current_step} : board_map")
-        #self.print(self.board_map)
+        self.print(self.board_map)
 
         return action
 
@@ -259,11 +259,18 @@ class Strat3(Strategy):
                     self.board_map[sym_x][sym_y] = self.map_values[sym_obj]
 
             else:
-                if obj == "robot":  # we don't want to actualize our map with the position of the robots by detection
-                    obj = "free_square"
-                sym_obj = self.symmetricObject(obj)  # the symmetrical corresponding object
-                self.board_map[x][y] = self.map_values[obj]
-                self.board_map[sym_x][sym_y] = self.map_values[sym_obj]
+                if obj == "coin":  # we don't want to overwrite a fake_coin
+                    if self.board_map[x][y] != self.map_values["fake_coin"]:
+                        sym_obj = self.symmetricObject(obj)  # the symmetrical corresponding object
+                        self.board_map[x][y] = self.map_values[obj]
+                        self.board_map[sym_x][sym_y] = self.map_values[sym_obj]
+
+                else:
+                    if obj == "robot":  # we don't want to actualize our map with the position of the robots by detection
+                        obj = "free_square"
+                    sym_obj = self.symmetricObject(obj)  # the symmetrical corresponding object
+                    self.board_map[x][y] = self.map_values[obj]
+                    self.board_map[sym_x][sym_y] = self.map_values[sym_obj]
 
             # we detect something corresponding to a new free_square
             if (obj == "free_square" or obj == "coin") and self.distance_map[x][y] == np.inf:  # robot -> free_square
