@@ -102,7 +102,7 @@ config_board = {
     'sigma': 4,
     'range_coins_drop': (1, 4),
     'shape_coin_drop_box': (3, 4),
-    'random_seed': 53897, #1117, #11111, #53897
+    'random_seed': 11111, #1119, #1113, #1117, #11111, #53897
     'graphics_cb': graphics_cb
 }
 
