@@ -1080,30 +1080,36 @@ class Strat3(Strategy):
         if obj == 'coin':
             # we consider it's a true coin, staying there since the beginning
             if self.board_map[x][y] == self.map_values["unknown"]:
+                nb_field = 0  # to see if the position belong to several boxes
                 for i in range(len(self.dropped_coins)):
                     fields = self.dropped_coins[i][1]
                     counter = self.dropped_coins[i][2]
                     # we remove the position from the field and 1 to the counter of coins
                     if position in fields:
+                        nb_field += 1
                         fields.remove(position)
                         self.dropped_coins[i][1] = fields
-                        # todo if several box contains position, we don't touch to the counter ?
-                        counter -= 1  # todo problem : we can remove 1 from several box...
+                if nb_field == 1:
+                    # todo if several box contains position, we don't touch to the counter ?
+                    counter -= 1  # todo problem : we can remove 1 from several box...
 
             # unidentified / free_square : it can be a dropped_coin or a fake_coin
             elif self.board_map[x][y] == self.map_values["unidentified"]\
                     or self.board_map[x][y] == self.map_values["free_square"]:
                 real = False
+                nb_field = 0  # to see if the position belong to several boxes
                 for i in range(len(self.dropped_coins)):
                     fields = self.dropped_coins[i][1]
                     counter = self.dropped_coins[i][2]
                     # we remove the position from the field and 1 to the counter of coins
                     if position in fields:
                         real = True  # we assume it is true
+                        nb_field += 1
                         fields.remove(position)
                         self.dropped_coins[i][1] = fields
-                        # todo if several box contains position, we don't touch to the counter ?
-                        counter -= 1  # todo problem : we can remove 1 from several box...
+                if nb_field == 1:
+                    # todo if several box contains position, we don't touch to the counter ?
+                    counter -= 1  # todo problem : we can remove 1 from several box...
 
             # already a coin or a fake_coin
             else:
@@ -1131,6 +1137,7 @@ class Strat3(Strategy):
                 self.dropped_coins.pop(i-drop)  # we drop the corresponding element
                 drop += 1
 
+        # if we detected a fake_coin
         if not real:
             return "fake_coin"
 
@@ -1142,6 +1149,7 @@ class Strat3(Strategy):
 # delete coin_position in self.robot_coin after picking it up (if a new coin appear there it's free)
 # if we don't collect opponent_fake_coins we can get stuck
 # dropped_coins because of energy runout are dropped at random position ...
+# in a box where a coin was dropped, if we first find a fake_coin, we will collect it, and think the real one is fake
 
 # Run strategy
 if __name__ == "__main__":
