@@ -67,7 +67,7 @@ class Strat3(Strategy):
         # we store the last positions of our robots to don't stay stuck while exploring
         self.explore_position = [[] for r in range(self.num_robots)]
         # we store the position (kx, ky) of the dropped coins
-        self.dropped_coins = []  # [(kx, ky), counter]
+        self.dropped_coins = []  # [(kx, ky), fields, counter]  fields are the positions were the coins can be
 
     def step(self, observation):
         ''' Called every time an observation has been received
@@ -1035,9 +1035,32 @@ class Strat3(Strategy):
 
         self.board_map[fc_x][fc_y] = self.map_values["fake_coin"]
 
+    # call this when we get a position of a dropped coin todo: counter is wrong if coin dropped on an unknown field
+    def droppedCoin(self, position):
+        kx, ky = self.numpyPosition(position)  # todo : numpyPosition or not ?!
+        cx, cy = self.numpyPosition(self.coin_box)  # todo : numpyPosition or not ?!
+        self.print("droppedCoins :", (kx, ky), (cx, cy))
+
+        counter = 1  # the dropped coin
+        fields = []  # the possible positions of the coin(s)
+
+        # we scan the box where the coin were dropped to detect unknown fields
+        for i in range(kx-cx, kx+cx+1):
+            for j in range(ky-cy, ky+cy+1):
+                # there is possibly a coin since the beginning there
+                if self.board_map[i][j] == self.map_values["unknown"]:
+                    counter += 1
+                # all possible positions of the coins
+                if self.board_map[i][j] == self.map_values["unknown"] or \
+                    self.board_map[i][j] == self.map_values["free_square"]:
+                    fields.append((i, j))
+
+        # we add it to self.dropped_coins
+        self.newDroppedCoins((kx, ky), fields, counter)
+
     # add a new position in the dropped_coins array
-    def newDroppedCoins(self, position, counter=1):
-        kx, ky = self.numpyPosition(position)
+    def newDroppedCoins(self, position, fields, counter=1):
+        kx, ky = position  # already numpyPosition
         alreadyExist = False
         # if there is already this position (shouldn't happen), we add the counter to the existing one
         for i in range(len(self.dropped_coins)):
@@ -1047,14 +1070,78 @@ class Strat3(Strategy):
                 break
         # if it's new, we add it
         if not alreadyExist:
-            self.dropped_coins.append([(kx, ky), counter])
+            self.dropped_coins.append([(kx, ky), fields, counter])
+
+    # in actualizeMap, before changing the values, we look if fields or counter can be reduce
+    def actualizeDroppedCoins(self, position, obj):
+        x, y = position  # the position that we will actualize
+        real = True  # False if we detect a fake_coin
+
+        if obj == 'coin':
+            # we consider it's a true coin, staying there since the beginning
+            if self.board_map[x][y] == self.map_values["unknown"]:
+                for i in range(len(self.dropped_coins)):
+                    fields = self.dropped_coins[i][1]
+                    counter = self.dropped_coins[i][2]
+                    # we remove the position from the field and 1 to the counter of coins
+                    if position in fields:
+                        fields.remove(position)
+                        self.dropped_coins[i][1] = fields
+                        # todo if several box contains position, we don't touch to the counter ?
+                        counter -= 1  # todo problem : we can remove 1 from several box...
+
+            # unidentified / free_square : it can be a dropped_coin or a fake_coin
+            elif self.board_map[x][y] == self.map_values["unidentified"]\
+                    or self.board_map[x][y] == self.map_values["free_square"]:
+                real = False
+                for i in range(len(self.dropped_coins)):
+                    fields = self.dropped_coins[i][1]
+                    counter = self.dropped_coins[i][2]
+                    # we remove the position from the field and 1 to the counter of coins
+                    if position in fields:
+                        real = True  # we assume it is true
+                        fields.remove(position)
+                        self.dropped_coins[i][1] = fields
+                        # todo if several box contains position, we don't touch to the counter ?
+                        counter -= 1  # todo problem : we can remove 1 from several box...
+
+            # already a coin or a fake_coin
+            else:
+                pass
+
+        # we have detect something that is not a coin
+        else:
+            for i in range(len(self.dropped_coins)):
+                fields = self.dropped_coins[i][1]
+                # no more a valid position for the coin
+                if position in fields:
+                    fields.remove(position)
+                    self.dropped_coins[i][1] = fields
+                # there can't be more coins than valid positions
+                counter = self.dropped_coins[i][2]
+                if counter > len(fields):
+                    self.dropped_coins[i][2] = len(fields)
+
+        # if there is no more coins to look after, we remove the element corresponding
+        drop = 0  # if there are several pop to do
+        for i in range(len(self.dropped_coins)):
+            fields = self.dropped_coins[i][1]
+            counter = self.dropped_coins[i][2]
+            if counter <= 0 or len(fields) == 0:
+                self.dropped_coins.pop(i-drop)  # we drop the corresponding element
+                drop += 1
+
+        if not real:
+            return "fake_coin"
+
+        # we return the given object
+        return obj
 
 
 # think about this problems after
 # delete coin_position in self.robot_coin after picking it up (if a new coin appear there it's free)
-# strange: board_map[x][y] = 'U' and distance_map[x][y] = 2.  (could be a coin which poped there)
-# problem: detectionCoin gives path through other robot
-
+# if we don't collect opponent_fake_coins we can get stuck
+# dropped_coins because of energy runout are dropped at random position ...
 
 # Run strategy
 if __name__ == "__main__":
