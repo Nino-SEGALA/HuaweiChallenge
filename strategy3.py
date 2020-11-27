@@ -66,6 +66,8 @@ class Strat3(Strategy):
             self.robot_fake_coin = [0]  # the first robot will places fake_coins
         # we store the last positions of our robots to don't stay stuck while exploring
         self.explore_position = [[] for r in range(self.num_robots)]
+        # we store the position (kx, ky) of the dropped coins
+        self.dropped_coins = []  # [(kx, ky), counter]
 
     def step(self, observation):
         ''' Called every time an observation has been received
@@ -1032,6 +1034,20 @@ class Strat3(Strategy):
         fc_x, fc_y = tuple(np.array((x, y)) + np.array(self.numpyPosition(self.dir2coord(place_fake_coin))))
 
         self.board_map[fc_x][fc_y] = self.map_values["fake_coin"]
+
+    # add a new position in the dropped_coins array
+    def newDroppedCoins(self, position, counter=1):
+        kx, ky = self.numpyPosition(position)
+        alreadyExist = False
+        # if there is already this position (shouldn't happen), we add the counter to the existing one
+        for i in range(len(self.dropped_coins)):
+            if (kx, ky) == self.dropped_coins[i][0]:
+                self.dropped_coins[i][1] += counter
+                alreadyExist = True
+                break
+        # if it's new, we add it
+        if not alreadyExist:
+            self.dropped_coins.append([(kx, ky), counter])
 
 
 # think about this problems after
