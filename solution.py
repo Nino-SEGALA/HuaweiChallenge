@@ -112,17 +112,39 @@ class Strat3(Strategy):
                 self.actualizeMap(robot, direction, radar)  # we actualize the board_map and distance_map
             self.actualizeRobotPosition(observation, robot_id)  # we actualize the position of our robot on the map
 
+
+        robots_sharing_energy = []
+        for r1 in range(self.num_robots):
+            robot1 = observation.robot(r1)
+            pos1 = robot1.position
+            for r2 in range(self.num_robots):
+                robot2 = observation.robot(r2)
+                pos2 = robot2.position
+
+                if pos1[0] == pos2[0]:
+                    if pos2[1] == pos1[1] + 1 or pos2[1] == pos1[1] - 1:
+                        if robot1.energy > robot2.energy and r1 not in robots_sharing_energy:
+                            self.share(r1, r2, observation, action)
+                            robots_sharing_energy.append(r1)
+                        elif robot2.energy > robot1.energy and r2 not in robots_sharing_energy:
+                            self.share(r2, r1, observation, action)
+                            robots_sharing_energy.append(r2)
+                elif pos1[1] == pos2[1]:
+                    if pos2[0] == pos1[0] + 1 or pos2[0] == pos1[0] - 1:
+                        if robot1.energy > robot2.energy and r1 not in robots_sharing_energy:
+                            self.share(r1, r2, observation, action)
+                            robots_sharing_energy.append(r1)
+                        elif robot2.energy > robot1.energy and r2 not in robots_sharing_energy:
+                            self.share(r2, r1, observation, action)
+                            robots_sharing_energy.append(r2)
+
+
         # Loop over robots / Choose action
         for robot_id in range(self.num_robots):
 
             # Get robot specific observation
             robot = observation.robot(robot_id)
             position = tuple(robot.position)
-
-            if robot_id == 0:
-                if robot.home_base:
-                    action.share_energy(robot_id, 'right')
-                    self.print('low energy shared')
 
             ### Robot is penalized, do nothing
             if robot.penalty > 0:
@@ -139,10 +161,7 @@ class Strat3(Strategy):
             # move = self.bestMove(observation, robot)  # we get the best move
             move = None
             place_fake_coin = False
-            if robot_id != 0:
-                move, place_fake_coin = self.nextMove(observation, robot_id)  # we get the next move
-            if robot_id == 0 and not robot.home_base:
-                move, place_fake_coin = self.nextMove(observation, robot_id, True)
+            move, place_fake_coin = self.nextMove(observation, robot_id)  # we get the next move
             if move is not None:
                 action.move(robot_id, move)  # set move action
                 # actualize robot position
@@ -160,6 +179,23 @@ class Strat3(Strategy):
                 # todo robots collecting fake_coins
 
         return action
+
+
+    def share(self, donator, receiver, observation, action):
+        don = observation.robot(donator)
+        rec = observation.robot(receiver)
+        self.print("sharing energy")
+        if don.position[0] == rec.position[0]:
+            if rec.position[1] == don.position[1] + 1:
+                action.share_energy(donator, 'down')
+            elif rec.position[1] == don.position[1] - 1:
+                action.share_energy(donator, 'up')
+        elif don.position[1] == rec.position[1]:
+            if rec.position[0] == don.position[0] + 1:
+                action.share_energy(donator, 'right')
+            elif rec.position[0] == don.position[0] - 1:
+                action.share_energy(donator, 'left')
+
 
     # Calculate the position of our home_base
     def positionHomeBase(self, observation):
@@ -681,7 +717,7 @@ class Strat3(Strategy):
             # if the robot has no specific path, we look if we can assign one to it
             if self.path[robot_id] == []:
                 # if the robot has no coin, we look if he can search a free coin (not already assigned to another robot)
-                if not robot.has_item and robot_id != 0:
+                if not robot.has_item:
                     dist, pos, path = self.distanceCoin(position)
                     if dist > 0:  # if we found a free coin
                         x, y = pos
