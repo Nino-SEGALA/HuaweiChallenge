@@ -92,6 +92,16 @@ class Strat3(Strategy):
             for robot_id in range(self.num_robots):  # Initialization of the position of the robots
                 self.initRobotPosition(observation, robot_id)
 
+        # we turn every robots into impostors between timesteps 200-400 / 600-800 / ...
+        """if self.current_step % 200 == 0 and self.current_step % 400 != 0 and self.current_step > 1:
+            for robot_id in range(1, self.num_robots):
+                self.robot_fake_coin.append(robot_id)
+
+        # we turn every robots (except robot_0) into searchers between timesteps 400-600 / 800-1000 / ...
+        if self.current_step % 400 == 0 and self.current_step > 1:
+            while len(self.robot_fake_coin) > 1:
+                self.robot_fake_coin.pop(1)"""
+
         # Initialize empty action
         action = self.action()
 
