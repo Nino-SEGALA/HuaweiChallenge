@@ -95,7 +95,7 @@ config_board = {
     'shape': (20, 25),
     'num_robots': 3, #1
     'energy': max_energy,
-    'num_hob': 3,
+    'num_hob': 4,
     'wall_density': 0.40,
     'num_coins_start': 35,
     'tau': 30,

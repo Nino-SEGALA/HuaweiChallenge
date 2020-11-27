@@ -85,10 +85,10 @@ class Strat3(Strategy):
         # self.print('opponent score: {}'.format(observation.opponent_score))
         # self.print('added_coins: {}'.format(observation.added_coins))
 
-        if observation.score > 50:
-            self.is_rogue = True
-        else:
-            self.is_rogue = False
+        # if observation.score > 30:
+        #     self.is_rogue = True
+        # else:
+        #     self.is_rogue = False
 
         # increase the step number
         self.current_step += 1
@@ -122,7 +122,7 @@ class Strat3(Strategy):
             if robot_id == 0:
                 if robot.home_base:
                     action.share_energy(robot_id, 'right')
-                    self.print('helper - sharing energy')
+                    self.print('low energy shared')
 
             ### Robot is penalized, do nothing
             if robot.penalty > 0:
