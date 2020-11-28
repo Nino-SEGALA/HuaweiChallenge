@@ -118,7 +118,7 @@ class Strat3(Strategy):
             self.actualizeRobotPosition(observation, robot_id)  # we actualize the position of our robot on the map
 
         # self.print(self.board_map[0:5])
-        self.print(self.board_map[6])
+        # self.print(self.board_map[6])
 
         # Loop over robots / Choose action
         for robot_id in range(self.num_robots):
@@ -157,7 +157,7 @@ class Strat3(Strategy):
                 # todo robots collecting fake_coins
 
         # self.print(f"step {self.current_step} : board_map")
-        self.print(self.board_map[6])
+        # self.print(self.board_map[6])
 
         return action
 
@@ -978,7 +978,7 @@ class Strat3(Strategy):
         for i in range(self.shape[0]):
             for j in range(self.shape[1]):
                 if dist_map[i][j] < np.inf:  # accessible
-                    if abs((hx + hy) - (i + j)) < dist:
+                    if abs(hx - i) + abs(hy - j) < dist:
                         dist = (hx + hy) - (i + j)
                         pos = (i, j)
 
@@ -1041,7 +1041,7 @@ class Strat3(Strategy):
         cx, cy = self.numpyPosition(self.coin_box)  # todo : numpyPosition or not ?!
         self.print("droppedCoins :", (kx, ky), (cx, cy))
 
-        counter = 1  # the dropped coin
+        counter = 1  # the dropped coin + coins_from_the_beginning
         fields = []  # the possible positions of the coin(s)
 
         # we scan the box where the coin were dropped to detect unknown fields
@@ -1066,6 +1066,7 @@ class Strat3(Strategy):
         for i in range(len(self.dropped_coins)):
             if (kx, ky) == self.dropped_coins[i][0]:
                 self.dropped_coins[i][1] += counter
+                # todo merge the fields
                 alreadyExist = True
                 break
         # if it's new, we add it
