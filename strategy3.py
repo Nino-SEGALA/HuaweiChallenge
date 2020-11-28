@@ -830,7 +830,7 @@ class Strat3(Strategy):
         x, y = position  # already numpyPosition
 
         # we keep the 5 last positions (should already be the case)
-        while len(self.explore_position[robot_id]) > 5:
+        while len(self.explore_position[robot_id]) > number_past_moves:
             self.explore_position[robot_id].pop(0)
 
         # we define the direction priority
@@ -852,8 +852,7 @@ class Strat3(Strategy):
                 impt = number_past_moves + 2
                 for i in range(len(self.explore_position[robot_id])):
                     if self.explore_position[robot_id][i] == (new_x, new_y):
-                        impt -= i  # high importance for new moves (or old ones)
-                        break
+                        impt -= i+1  # high importance for new moves (or old ones)
 
                 # if the new importance is the highest, we keep this move
                 if impt > importance:
