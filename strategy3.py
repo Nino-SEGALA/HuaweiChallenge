@@ -121,7 +121,7 @@ class Strat3(Strategy):
             self.helpNeeded(observation, robot_id)  # we look if the robot needs help
 
         # self.print(self.board_map[0:5])
-        # self.print(self.board_map[6])
+        # self.print(self.board_map)
 
         # Loop over robots / Choose action
         for robot_id in range(self.num_robots):
@@ -302,7 +302,7 @@ class Strat3(Strategy):
                         obj = "free_square"
                     # we look if we can remove some positions of the searching areas for the dropped coins
                     obj = self.actualizeDroppedCoins((x, y), obj)
-                        
+
                     sym_obj = self.symmetricObject(obj)  # the symmetrical corresponding object
                     self.board_map[x][y] = self.map_values[obj]
                     if self.board_map[sym_x][sym_y] not in (self.map_values["robot"],
@@ -620,9 +620,9 @@ class Strat3(Strategy):
         go_back_home = False  # if not enough energy, we go back home
 
         # if the robot need help, it stays
-        if self.need_help[robot_id]:
+        """if self.need_help[robot_id]:
             self.print("heeelp :", robot_id)
-            return "stay", False, False
+            return "stay", False, False"""
 
         # if the robot is an impostor trying to place fake_coins
         if robot_id in self.robot_fake_coin:
@@ -640,8 +640,8 @@ class Strat3(Strategy):
                             # if enough_energy_coin:
                             self.path[robot_id] = [path[0]]  # we put only the next move
                             self.print("pathCoin: ", position, path, robot_id, self.path)
-                            # else:
-                            #    go_back_home = True  # not enough energy to search a coin: we go back home
+                        else:
+                            go_back_home = True  # not enough energy to search a coin: we go back home
 
                     # the robot has a coin but doesn't have the path to go home
                     if robot.has_item or go_back_home:
@@ -676,25 +676,25 @@ class Strat3(Strategy):
                 # if the robot has no coin, we look if he can search a free coin (not already assigned to another robot)
                 if not robot.has_item:
                     # if needed, we go help
-                    next_pos = self.goHelp(observation, robot_id)
+                    """next_pos = self.goHelp(observation, robot_id)
                     if next_pos is not None:
                         self.print("nextMove : goHelp", robot_id, next_pos)
                         if isinstance(next_pos, str):  # if it's a string (direction of sharing)
                             return None, False, next_pos
                         self.path[robot_id] = [next_pos]  # next_position to get closer
 
-                    else:
-                        dist, pos, path = self.distanceCoin(position)
-                        if dist > 0:  # if we found a free coin
-                            x, y = pos
-                            # enough energy to search the coin
-                            enough_energy_coin = robot.energy - dist - 2 * self.distance_map[x][y] > 5
-                            if enough_energy_coin:
-                                # we put only the next move, to avoid skipped moves problem
-                                self.path[robot_id] = [path[0]]
-                                self.print("pathCoin: ", position, path, robot_id, self.path)
-                            else:
-                                go_back_home = True  # not enough energy to search a coin: we go back home
+                    else:"""
+                    dist, pos, path = self.distanceCoin(position)
+                    if dist > 0:  # if we found a free coin
+                        x, y = pos
+                        # enough energy to search the coin
+                        enough_energy_coin = robot.energy - dist - 2 * self.distance_map[x][y] > 5
+                        if enough_energy_coin:
+                            # we put only the next move, to avoid skipped moves problem
+                            self.path[robot_id] = [path[0]]
+                            self.print("pathCoin: ", position, path, robot_id, self.path)
+                        else:
+                            go_back_home = True  # not enough energy to search a coin: we go back home
 
                 # the robot has a coin but doesn't have the path to go home -> we assign the path to go to the home_base
                 if robot.has_item or go_back_home:
@@ -1035,9 +1035,20 @@ class Strat3(Strategy):
         if place:
             if energy >= 40:
                 return self.placeFakeCoin(position)
+
         # if we can place 2 fake_coins or 1
         if 40 - 1 < energy < 40 + 5:  # 2*40-1 < energy < 2*40+5 or
             return self.placeFakeCoin(position)
+
+        # if we are in the opponent part
+        percentage = 0.6
+        if energy >= 40:
+            if self.home_base_positions[0] == (1, 1):  # we play at the top
+                if position[0] > percentage * self.shape[1]:
+                    return self.placeFakeCoin(position)
+            else:  # we play at the bottom
+                if position[0] < (1-percentage) * self.shape[1]:
+                    return self.placeFakeCoin(position)
 
         return None
 
