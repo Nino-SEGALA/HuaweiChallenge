@@ -67,11 +67,10 @@ class Strat3(Strategy):
         # we store the last positions of our robots to don't stay stuck while exploring
         self.explore_position = [[] for r in range(self.num_robots)]
 
-        self.is_rogue = False
+        self.is_rogue = True
         self.fake_coins_placed = 0
-        self.fake_coins_threshold = 2
-        self.score_threshold = 30
-        self.score_decrease = 5
+        self.fake_coins_threshold = 5
+        self.score_threshold = 5
 
         self.added_coin_positions = []
 
@@ -109,34 +108,17 @@ class Strat3(Strategy):
             for box_pos in observation.added_coins:
                 kx, ky = box_pos[1], box_pos[0]
 
-                x_min = abs(kx - self.coin_box[1])
-                x_max = abs(kx + self.coin_box[1])
+                x_min = abs(kx - self.coin_box[0])
+                x_max = abs(kx + self.coin_box[0])
 
-                y_min = abs(ky - self.coin_box[0])
-                y_max = abs(ky + self.coin_box[0])
+                y_min = abs(ky - self.coin_box[1])
+                y_max = abs(ky + self.coin_box[1])
 
                 for i in range(x_min, x_max+1):
                     for j in range(y_min, y_max + 1):
                         if self.board_map[i][j] == self.map_values['free_square']:
-                            self.added_coin_positions.append((i, j))
+                            self.added_coin_positions.append((j, i))
 
-
-        
-
-        # if observation.score > self.score_threshold:
-        #     self.print("decide: rogue", self.fake_coins_placed)
-        #     self.is_rogue = True
-        #     self.score_threshold += 20
-        
-        # if self.fake_coins_placed > self.fake_coins_threshold:
-        #     self.print("decide: passive")
-        #     self.is_rogue = False
-        #     self.fake_coins_threshold += 2
-
-        if self.current_step < self.shape[0] * self.shape[1] / 2:
-            self.is_rogue = False
-        else:
-            self.is_rogue = True
 
         # Loop over robots / Actualization of the board_map and distance_map
         for robot_id in range(self.num_robots):
@@ -353,7 +335,7 @@ class Strat3(Strategy):
 
             else:
                 if obj == "coin":  # we don't want to overwrite a fake_coin
-                    if self.board_map[x][y] == self.map_values['free_square'] and (x, y) not in self.added_coin_positions:
+                    if self.board_map[x][y] == self.map_values['free_square'] and (x, y) not in self.fake_coins_placed:
                         self.print("fake detected", x,y)
                         self.board_map[x][y] = self.map_values["fake_coin"]
 
@@ -701,17 +683,11 @@ class Strat3(Strategy):
 
                 # we look if we can go closer to opponent_home_base or place a fake_coin
                 else:
-                    if self.home_base_positions[0] == (1, 1):  # we play at the top
-                        if robot.position[1] > 0.6 * self.shape[0] or (robot.energy == 41 and robot.position[1] > 6):
-                            dir = self.placingFakeCoin(position, robot.energy, robot, True)  # we look if we should place a fake_coin
-                            if dir:
-                                return None, dir  # we return the direction in which we want to place a fake_coin
-                    else:  # we play at the bottom
-                        if robot.position[1] < 0.4 * self.shape[0] or (robot.energy == 41 and robot.position[1] < self.shape[0] - 6):
-                            dir = self.placingFakeCoin(position, robot.energy, robot, True)  # we look if we should place a fake_coin
-                            if dir:
-                                return None, dir  # we return the direction in which we want to place a fake_coin
-                    
+                    if robot.position[1] > 0.6 * self.shape[0] or (robot.energy == 41 and robot.position[1] > 6):
+                        self.print("comeon")
+                        dir = self.placingFakeCoin(position, robot.energy, robot, True)  # we look if we should place a fake_coin
+                        if dir:
+                            return None, dir  # we return the direction in which we want to place a fake_coin
                     path = self.pathFakeCoin(position, robot)  # we look if we can get closer to the home_base
 
                     if path is not None:  # there is a way to the opponent_home_base
