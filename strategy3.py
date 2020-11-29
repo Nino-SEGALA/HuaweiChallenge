@@ -862,7 +862,7 @@ class Strat3(Strategy):
 
     # exploration strategy
     def exploration(self, observation, robot_id, position):
-        number_past_moves = 7  # we try to not go into one of the last 7 positions of our exploring robot
+        number_past_moves = 9  # we try to not go into one of the last 7 positions of our exploring robot
         x, y = position  # already numpyPosition
 
         opponents = self.opponentNeighborhood(observation, robot_id)  # the opponents robot just next to us
@@ -1043,7 +1043,7 @@ class Strat3(Strategy):
         # if we are at our goal position and want to place a fake_coin
         if place:
             if energy >= 40:
-                if max(position[0], position[1]) > 8:
+                if self.nearOpponentSide(position, percentage=0.4):
                     return self.placeFakeCoin(position)
 
         # if we can place 2 fake_coins or 1
@@ -1051,15 +1051,9 @@ class Strat3(Strategy):
             return self.placeFakeCoin(position)
 
         # if we are in the opponent part
-        percentage = 0.6
         if energy >= 40:
-            if self.home_base_positions[0] == (1, 1):  # we play at the top
-                self.print("theeere :", position[0], self.shape[0])
-                if position[0] > percentage * self.shape[0]:
-                    return self.placeFakeCoin(position)
-            else:  # we play at the bottom
-                if position[0] < (1-percentage) * self.shape[1]:
-                    return self.placeFakeCoin(position)
+            if self.nearOpponentSide(position):
+                return self.placeFakeCoin(position)
 
         return None
 
@@ -1092,6 +1086,19 @@ class Strat3(Strategy):
         fc_x, fc_y = tuple(np.array((x, y)) + np.array(self.numpyPosition(self.dir2coord(place_fake_coin))))
 
         self.board_map[fc_x][fc_y] = self.map_values["fake_coin"]
+
+    # if we are close enough to the opponent side
+    def nearOpponentSide(self, position, percentage=0.6):
+        # we play at the top
+        if self.home_base_positions[0] == (1, 1):
+            if position[0] > percentage * self.shape[0]:
+                return True
+
+        # we play at the bottom
+        else:
+            if position[0] < (1 - percentage) * self.shape[1]:
+                return True
+        return False
 
     # call this when we get a position of a dropped coin
     def droppedCoin(self, position):
