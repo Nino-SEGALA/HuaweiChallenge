@@ -1044,7 +1044,8 @@ class Strat3(Strategy):
         percentage = 0.6
         if energy >= 40:
             if self.home_base_positions[0] == (1, 1):  # we play at the top
-                if position[0] > percentage * self.shape[1]:
+                self.print("theeere :", position[0], self.shape[0])
+                if position[0] > percentage * self.shape[0]:
                     return self.placeFakeCoin(position)
             else:  # we play at the bottom
                 if position[0] < (1-percentage) * self.shape[1]:
