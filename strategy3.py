@@ -687,8 +687,17 @@ class Strat3(Strategy):
                     dist, pos, path = self.distanceCoin(position)
                     if dist > 0:  # if we found a free coin
                         x, y = pos
+
+                        # if also possible to place a fake_coin
+                        if robot.energy - dist - 2 * self.distance_map[x][y] > 40+3:
+                            self.print("fake_coin 3.0")
+                            dir = self.placingFakeCoin(position, robot.energy, place=True)  # we place a fake_coin
+                            if dir:
+                                self.print("fake_coin 3 :", position, dir)
+                                return None, dir, False  # we return the direction in which we want to place a fake_coin
+
                         # enough energy to search the coin
-                        enough_energy_coin = robot.energy - dist - 2 * self.distance_map[x][y] > 5
+                        enough_energy_coin = robot.energy - dist - 2 * self.distance_map[x][y] > 3
                         if enough_energy_coin:
                             # we put only the next move, to avoid skipped moves problem
                             self.path[robot_id] = [path[0]]
@@ -1034,7 +1043,8 @@ class Strat3(Strategy):
         # if we are at our goal position and want to place a fake_coin
         if place:
             if energy >= 40:
-                return self.placeFakeCoin(position)
+                if max(position[0], position[1]) > 8:
+                    return self.placeFakeCoin(position)
 
         # if we can place 2 fake_coins or 1
         if 40 - 1 < energy < 40 + 5:  # 2*40-1 < energy < 2*40+5 or
@@ -1174,7 +1184,6 @@ class Strat3(Strategy):
 
             # already a coin or a fake_coin
             else:
-                self.print("error : actualizeDroppedCoins :", self.board_map[x][y])
                 pass
 
         # we have detect something that is not a coin
