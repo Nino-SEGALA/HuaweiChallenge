@@ -1079,6 +1079,7 @@ class Strat3(Strategy):
                 # all possible positions of the dropped coin
                 if self.board_map[i][j] == self.map_values["free_square"]:
                     fields.append((i, j))
+                # "unidentified" + self.distance_map[i][j] == np.inf: could be a starting_coin
 
         # we add it to self.dropped_coins
         self.newDroppedCoins((kx, ky), fields, counter)
@@ -1090,13 +1091,20 @@ class Strat3(Strategy):
         # if there is already this position (shouldn't happen), we add the counter to the existing one
         for i in range(len(self.dropped_coins)):
             if (kx, ky) == self.dropped_coins[i][0]:
-                self.dropped_coins[i][1] += counter
-                # todo merge the fields
+                self.dropped_coins[i][1] = self.mergeFields(fields, self.dropped_coins[i][1])
+                self.dropped_coins[i][2] += counter
                 alreadyExist = True
                 break
         # if it's new, we add it
         if not alreadyExist:
             self.dropped_coins.append([(kx, ky), fields, counter])
+
+    # merge the 2 lists of fields
+    def mergeFields(self, f1, f2):
+        for f in f2:
+            if f not in f1:
+                f1.append(f)
+        return f
 
     # in actualizeMap, before changing the values, we look if fields or counter can be reduce
     def actualizeDroppedCoins(self, position, obj):
@@ -1106,7 +1114,7 @@ class Strat3(Strategy):
         if obj == 'coin':
             # we consider it's a true coin, staying there since the beginning
             if self.board_map[x][y] == self.map_values["unknown"]:
-                nb_field = 0  # to see if the position belong to several boxes
+                """nb_field = 0  # to see if the position belong to several boxes
                 for i in range(len(self.dropped_coins)):
                     fields = self.dropped_coins[i][1]
                     counter = self.dropped_coins[i][2]
@@ -1117,43 +1125,51 @@ class Strat3(Strategy):
                         self.dropped_coins[i][1] = fields
                 if nb_field == 1:
                     # todo if several box contains position, we don't touch to the counter ?
-                    counter -= 1  # todo problem : we can remove 1 from several box...
+                    counter -= 1  # todo problem : we can remove 1 from several box..."""
+                pass
 
-            # unidentified / free_square : it can be a dropped_coin or a fake_coin
+            # unidentified and was never detected before : it is a starting coin
+            elif self.board_map[x][y] == self.map_values["unidentified"]\
+                    and self.distance_map[x][y] == np.inf:
+                pass
+
+            # can be the dropped coin or a fake_coin
             elif self.board_map[x][y] == self.map_values["unidentified"]\
                     or self.board_map[x][y] == self.map_values["free_square"]:
                 real = False
-                nb_field = 0  # to see if the position belong to several boxes
+                nb_area = 0  # to see if the position belong to several areas
                 for i in range(len(self.dropped_coins)):
                     fields = self.dropped_coins[i][1]
                     counter = self.dropped_coins[i][2]
                     # we remove the position from the field and 1 to the counter of coins
                     if position in fields:
                         real = True  # we assume it is true
-                        nb_field += 1
+                        nb_area += 1
                         fields.remove(position)
                         self.dropped_coins[i][1] = fields
-                if nb_field == 1:
-                    # todo if several box contains position, we don't touch to the counter ?
-                    counter -= 1  # todo problem : we can remove 1 from several box...
+                if nb_area == 1:
+                    counter -= 1
 
             # already a coin or a fake_coin
             else:
+                self.print("error : actualizeDroppedCoins :", self.board_map[x][y])
                 pass
 
         # we have detect something that is not a coin
-        else:
-            for i in range(len(self.dropped_coins)):
+        elif obj is not None:
+            for i in range(len(self.dropped_coins)):  # we look at every searching area
                 fields = self.dropped_coins[i][1]
                 # no more a valid position for the coin
                 if position in fields:
                     fields.remove(position)
                     self.dropped_coins[i][1] = fields
-                # there can't be more coins than valid positions
-                counter = self.dropped_coins[i][2]
-                if counter > len(fields):
-                    self.dropped_coins[i][2] = len(fields)
 
+        # there can't be more coins than valid positions
+        for i in range(len(self.dropped_coins)):  # we look at every searching area
+            counter = self.dropped_coins[i][2]
+            if counter > len(fields):
+                self.dropped_coins[i][2] = len(fields)
+        
         # if there is no more coins to look after, we remove the element corresponding
         drop = 0  # if there are several pop to do
         for i in range(len(self.dropped_coins)):
