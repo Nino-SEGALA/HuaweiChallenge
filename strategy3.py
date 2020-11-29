@@ -251,6 +251,10 @@ class Strat3(Strategy):
                                 self.map_values["wall"]]:  # if it's not an immutable object
                     obj = "free_square"
                     sym_obj = self.symmetricObject(obj)  # the symmetrical corresponding object
+
+                    # we look if we can remove some positions of the searching areas for the dropped coins
+                    obj = self.actualizeDroppedCoins((x, y), obj)
+
                     # board_map
                     self.board_map[x][y] = self.map_values[obj]
                     if self.board_map[sym_x][y] not in (self.map_values["robot"],
@@ -283,6 +287,9 @@ class Strat3(Strategy):
             else:
                 if obj == "coin":  # we don't want to overwrite a fake_coin
                     if self.board_map[x][y] != self.map_values["fake_coin"]:
+                        # we look if it is a real coin (unsure) or a fake_coin (sure)
+                        obj = self.actualizeDroppedCoins((x, y), obj)
+
                         sym_obj = self.symmetricObject(obj)  # the symmetrical corresponding object
                         self.board_map[x][y] = self.map_values[obj]
                         if self.board_map[sym_x][sym_y] not in (self.map_values["robot"],
@@ -293,6 +300,9 @@ class Strat3(Strategy):
                     # we don't want to actualize our map with the position of the opponent robots by detection
                     if obj == "robot" and self.board_map[x][y] != self.map_values["robot"]:  # not our robot
                         obj = "free_square"
+                    # we look if we can remove some positions of the searching areas for the dropped coins
+                    obj = self.actualizeDroppedCoins((x, y), obj)
+                        
                     sym_obj = self.symmetricObject(obj)  # the symmetrical corresponding object
                     self.board_map[x][y] = self.map_values[obj]
                     if self.board_map[sym_x][sym_y] not in (self.map_values["robot"],
@@ -1156,7 +1166,7 @@ class Strat3(Strategy):
                 pass
 
         # we have detect something that is not a coin
-        elif obj is not None:
+        elif obj is not None and obj != "unidentified":
             for i in range(len(self.dropped_coins)):  # we look at every searching area
                 fields = self.dropped_coins[i][1]
                 # no more a valid position for the coin
@@ -1169,7 +1179,7 @@ class Strat3(Strategy):
             counter = self.dropped_coins[i][2]
             if counter > len(fields):
                 self.dropped_coins[i][2] = len(fields)
-        
+
         # if there is no more coins to look after, we remove the element corresponding
         drop = 0  # if there are several pop to do
         for i in range(len(self.dropped_coins)):
