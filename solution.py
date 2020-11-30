@@ -28,12 +28,6 @@ class Strat3(Strategy):
     def init(self):
         '''Called once before the first observation has been received.'''
 
-        self.print('Init')
-        self.print('num_robots: {}'.format(self.num_robots))
-        self.print('shape: {}'.format(self.shape))
-        self.print('max_energy: {}'.format(self.max_energy))
-        self.print('coin_box (x,y): {}'.format(self.coin_box))
-
         # For representing directions with indices
         self.directions = ['up', 'right', 'down', 'left']
         # Values of the different object in the board_map
@@ -104,6 +98,12 @@ class Strat3(Strategy):
         # self.print('opponent score: {}'.format(observation.opponent_score))
         # self.print('added_coins: {}'.format(observation.added_coins))
 
+        # Initialize empty action
+        action = self.action()
+
+        # if self.shape[0] * self.shape[1] > 100000:
+        #     return action
+
     
         # increase the step number
         self.current_step += 1
@@ -114,9 +114,6 @@ class Strat3(Strategy):
             self.board_map, self.distance_map = self.initMap()  # Initialization of the board_map and distance_map
             for robot_id in range(self.num_robots):  # Initialization of the position of the robots
                 self.initRobotPosition(observation, robot_id)
-
-        # Initialize empty action
-        action = self.action()
 
 
         if len(observation.added_coins) > 0:
@@ -133,6 +130,7 @@ class Strat3(Strategy):
                     for j in range(y_min, y_max + 1):
                         if self.board_map[i][j] == self.map_values['free_square']:
                             self.added_coin_positions.append((i, j))
+                            # self.board_map[i][j] = self.map_values['scan_again']
 
 
         # Loop over robots / Actualization of the board_map and distance_map
@@ -145,10 +143,10 @@ class Strat3(Strategy):
                 self.actualizeMap(robot, direction, radar)  # we actualize the board_map and distance_map
             self.actualizeRobotPosition(observation, robot_id)  # we actualize the position of our robot on the map
 
-            if self.current_step > self.shape[0] * self.shape[1] / 2 and robot.energy > 39:
+            if self.current_step > self.shape[0] * self.shape[1] / 2:
                 self.is_rogue[robot_id] = True
-            elif robot.energy < 40:
-                self.is_rogue[robot_id] = False
+            # if self.current_step > 50:
+            #     self.is_rogue[robot_id] = True
 
 
         # robots_sharing_energy = []
@@ -208,7 +206,6 @@ class Strat3(Strategy):
                 if self.detectionNextMove(position, move):  # if there is something to detect after the move
                     action.detect(robot_id)
                 self.actualizeRobotAfterMove(robot_id, self.numpyPosition(position), next_position)
-                # self.explore_position[robot_id].append(self.opp_dir[move])
                 self.explore_position[robot_id].append(next_position)  # we store our next_position for exploration
             if place_fake_coin:  # if we have a direction to place a fake_coin
                 action.fake_coin(robot_id, place_fake_coin)
@@ -705,14 +702,13 @@ class Strat3(Strategy):
 
                 # we look if we can go closer to opponent_home_base or place a fake_coin
                 else:
-                    self.print("goingrogue", robot_id, robot.position, robot.energy)
                     if self.home_base_positions[0] == (1, 1):  # we play at the top
-                        if (robot.position[1] > 0.6 * self.shape[1] and robot.energy > 39) or (robot.energy == 41 and robot.position[1] > 6):
+                        if (robot.position[1] > int(0.6 * self.shape[1]) and robot.energy > 39) or (robot.energy == 41 and robot.position[1] > 6):
                             dir = self.placingFakeCoin(position, robot.energy, robot, True)  # we look if we should place a fake_coin
                             if dir:
                                 return None, dir  # we return the direction in which we want to place a fake_coin
                     else:  # we play at the bottom
-                        if (robot.position[1] < 0.4 * self.shape[1] and robot.energy > 39) or (robot.energy == 41 and robot.position[1] < self.shape[1] - 6):
+                        if (robot.position[1] < int(0.4 * self.shape[1]) and robot.energy > 39) or (robot.energy == 41 and robot.position[1] < self.shape[1] - 6):
                             dir = self.placingFakeCoin(position, robot.energy, robot, True)  # we look if we should place a fake_coin
                             if dir:
                                 return None, dir  # we return the direction in which we want to place a fake_coin
@@ -734,7 +730,7 @@ class Strat3(Strategy):
                         #         self.print("fake_coin 2 :", position, dir)
                         #         return 'up', dir  # we return the direction in which we want to place a fake_coin
 
-        else:
+        if not self.is_rogue[robot_id]:
             # if the robot has no specific path, we look if we can assign one to it
             if self.path[robot_id] == []:
                 # if the robot has no coin, we look if he can search a free coin (not already assigned to another robot)
@@ -743,13 +739,13 @@ class Strat3(Strategy):
                     if dist > 0:  # if we found a free coin
                         x, y = pos
                         # enough energy to search the coin
-                        enough_energy_coin = robot.energy - dist - 2 * self.distance_map[x][y] > 5
+                        enough_energy_coin = (robot.energy - dist - 1.2 * self.distance_map[x][y] > 5 and (robot.energy - dist) % 2 == 0)
                         if enough_energy_coin:
                             self.path[robot_id] = [path[0]]  # we put only the next move, to avoid skipped moves problem
                             self.print("pathCoin: ", position, path, robot_id, self.path)
-                        else:
-                            self.is_rogue[robot_id] = True
-                            return self.nextMove(observation, robot_id)
+                        # else:
+                        #     self.is_rogue[robot_id] = True
+                        #     return self.nextMove(observation, robot_id)
                             # go_back_home = True  # not enough energy to search a coin: we go back home
 
                 # the robot has a coin but doesn't have the path to go home -> we assign the path to go to the home_base
@@ -771,6 +767,7 @@ class Strat3(Strategy):
 
         # exploration : no coins to search or to bring back home
         move = self.exploration(robot_id, position, observation)
+        # self.explore_position[robot_id].append(self.opp_dir[move])
         self.print("exploration :", move, ", robot : ", robot_id)
         return move, False  # we don't place a fake_coin
 
@@ -932,7 +929,7 @@ class Strat3(Strategy):
             #     directions = ["up", "left", "right", "down"]
 
         # we look at the possible moves
-        move, importance = None, -1  # the chosen move, the importance of the move (avoid the last positions)
+        move, importance = None, -np.inf  # the chosen move, the importance of the move (avoid the last positions)
         for d in directions:
             new_x, new_y = tuple(np.array(position) + np.array(self.numpyPosition(self.dir2coord(d))))
             if self.board_map[new_x][new_y] == self.map_values["free_square"]:
