@@ -664,7 +664,9 @@ class Strat3(Strategy):
                             if path != []:
                                 self.path[robot_id] = [path[0]]  # we put only the next move
                             else:
-                                self.path[robot_id] = [self.randomMove(position)]
+                                next_pos = self.randomNextPos(position)
+                                if next_pos is not None:
+                                    self.path[robot_id] = [next_pos]
 
                         path = self.pathHomeBase(position)
                         if path != []:  # should be the case since the robot is on a valid position
@@ -686,7 +688,7 @@ class Strat3(Strategy):
                             self.path[robot_id] = [path[0]]  # we put only the next move, to avoid skipped moves problem
                         # no path were found, we should have reach our goal
                         else:
-                            dir = self.placingFakeCoin(position, robot.energy, place=True)  # we place a fake_coin
+                            dir = self.placingFakeCoin(position, robot.energy)  # we place a fake_coin
                             if dir:
                                 self.print("fake_coin 2 :", position, dir)
                                 return None, dir, False  # we return the direction in which we want to place a fake_coin
@@ -712,7 +714,7 @@ class Strat3(Strategy):
                         # if also possible to place a fake_coin
                         if robot.energy - dist - 2 * self.distance_map[x][y] > 40+3:
                             self.print("fake_coin 3.0")
-                            dir = self.placingFakeCoin(position, robot.energy, place=True)  # we place a fake_coin
+                            dir = self.placingFakeCoin(position, robot.energy)  # we place a fake_coin
                             if dir:
                                 self.print("fake_coin 3 :", position, dir)
                                 return None, dir, False  # we return the direction in which we want to place a fake_coin
@@ -1085,7 +1087,7 @@ class Strat3(Strategy):
         else:  # we play at the bottom
             directions = ["left", "up", "right", "down"]
 
-        hb_pos = self.freeHomeBase()  # free home_base position
+        #hb_pos = self.freeHomeBase()  # free home_base position
 
         # we look in every direction and if it's possible to place a fake_coin we return the direction
         for d in directions:
@@ -1450,9 +1452,7 @@ class Strat3(Strategy):
         return distance, pos, path
 
     # random legal move
-    def randomMove(self, position):
-        x, y = position
-
+    def randomNextPos(self, position):
         if self.home_base_positions[0] == (1, 1):  # we play at the top
             directions = ["right", "down", "left", "up"]
         else:  # we play at the bottom
@@ -1462,7 +1462,7 @@ class Strat3(Strategy):
         for d in directions:
             new_x, new_y = tuple(np.array(position) + np.array(self.numpyPosition(self.dir2coord(d))))
             if self.board_map[new_x][new_y] == self.map_values["free_square"]:
-                return d
+                return (new_x, new_y)
 
     # think about this problems after
 # delete coin_position in self.robot_coin after picking it up (if a new coin appear there it's free)
