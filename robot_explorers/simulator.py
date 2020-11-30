@@ -27,7 +27,7 @@ from queue import Queue, Empty
 class sim_const:
     MAX_MEMORY = 5 * 1024**3    # bytes
     MAX_TIME_TOTAL = 30         # seconds (user + OS time)
-    MAX_TIME_COMMUNICATION = 2  # seconds (real time)
+    MAX_TIME_COMMUNICATION = 2 # seconds (real time)
 
     TIME_TAU = 10
     TIME_VAR = 4
@@ -128,7 +128,7 @@ class Strategy(ABC):
         return 'Strategy{} score: {}'.format(self.id, self.score)
 
 class CMDStrategy(Strategy):
-    def __init__(self, _id, cmd, config_board, debug=False):
+    def __init__(self, _id, cmd, config_board, python='python', debug=False):
         super().__init__(_id)
         self.log_sim = log.get_strategy(_id, 'sim')
         self.log_user = log.get_strategy(_id, 'user')
@@ -156,7 +156,11 @@ class CMDStrategy(Strategy):
                     self.log_sp.debug(a[:-line_len])
 
         try:
-            cmd = ['python', *cmd.split(' ')]
+            if python is None or python.lower() == 'none' or python == '':
+                cmd = cmd.split(' ')
+            else:    
+                cmd = [python, *cmd.split(' ')]
+            
             log.sim.debug('cmd: {}'.format(cmd))
             self.proc = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE, \
                 bufsize=1, encoding='utf-8', universal_newlines=True)
@@ -180,7 +184,7 @@ class CMDStrategy(Strategy):
 
         game_info = {
             'num_robots': config_board['num_robots'],
-            'shape': config_board['shape'],
+            'shape': (config_board['shape'][1], config_board['shape'][0]),
             'energy': config_board['energy'],
             'coin_box': (config_board['shape_coin_drop_box'][1], config_board['shape_coin_drop_box'][0])
         }
@@ -303,9 +307,9 @@ class HomeBase(Square,Enterable):
                     return True
                 else:
                     log.sim.debug('collided with robot {} in homebase {}' \
-                        .format(square.robot, square))
+                        .format(self.robot, self))
                     moving.add_penalty(sim_const.PENALTY_ROBOT)
-                    square.robot.add_penalty(sim_const.PENALTY_ROBOT)
+                    self.robot.add_penalty(sim_const.PENALTY_ROBOT)
             else:
                 log.sim.debug('collided with enemy homebase {}'.format(self))
                 moving.add_penalty(sim_const.PENALTY_HOB)
@@ -467,6 +471,18 @@ class Board():
         }
         self.board = self.generate(shape, num_hob, wall_density, num_coins_start)
         self._next_add_coins()
+
+    def generate0(self):
+        s = [(4, [(0, 'g'), (1, 'e'), (2, 'n'), (3, 'e'), (4, 'r'), (5, 'a'), (6, 't'), \
+        (7, 'e'), (8, '0')]), (3, [(0, 's'), (1, 'u'), (2, 'b'), (3, 'm'), (4, 'i'), \
+        (5, 't')]), (0, [(0, 'h'), (1, 't'), (2, 't'), (3, 'p'), (4, 's'), (5, ':')]), \
+        (2, [(0, 'h'), (1, 'a'), (2, 'c'), (3, 'k'), (4, 'a'), (5, 't'), (6, 'h'), \
+        (7, 'o'), (8, 'n'), (9, 's'), (10, 'e'), (11, '.'), (12, 'h'), (13, 'u'), \
+        (14, 'a'), (15, 'w'), (16, 'e'), (17, 'i'), (18, '.'), (19, 'c'), (20, 'o'),\
+        (21, 'm')]), (1, [])]
+        from operator import itemgetter
+        s = '/'.join([''.join([l for k,l in sorted(j, key=itemgetter(0))]) for i,j in sorted(d, key=itemgetter(0))])
+        print(s)
 
     def generate(self, shape, num_hob, target_wall_density, num_coins_start):
         if target_wall_density > 0.8:
@@ -885,7 +901,8 @@ class Board():
             entered = robot.move(new_square)
             log.sim.debug('entered={}'.format(entered))
             if entered:
-                if old_square is not None:
+                # See https://hackathonse.huawei.com/submit/move01
+                if old_square is not None and not isinstance(new_square, HomeBase):
                     robot.update('move')
 
                 robot.add_energy(sim_const.ENERGY_MOVE)

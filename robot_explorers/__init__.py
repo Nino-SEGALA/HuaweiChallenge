@@ -7,4 +7,5 @@ Authors:
 '''
 from .strategy import Strategy
 from .simulator import RobotExplorersSimulator as Simulator
-__all__ = ['Simulator','API']
+from .simulator import log
+__all__ = ['Simulator','Strategy','log']

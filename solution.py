@@ -76,6 +76,7 @@ class Strat3(Strategy):
         self.added_coin_positions = []
 
     def step(self, observation):
+
         ''' Called every time an observation has been received
 
             Args:
@@ -96,6 +97,7 @@ class Strat3(Strategy):
         self.current_step += 1
         # if we are at step 1 we identified our home_base
         if self.current_step == 1:
+            self.shape = (self.shape[1], self.shape[0])
             self.positionHomeBase(observation)  # We play up or bottom ?
             self.board_map, self.distance_map = self.initMap()  # Initialization of the board_map and distance_map
             for robot_id in range(self.num_robots):  # Initialization of the position of the robots
@@ -149,30 +151,30 @@ class Strat3(Strategy):
             self.actualizeRobotPosition(observation, robot_id)  # we actualize the position of our robot on the map
 
 
-        robots_sharing_energy = []
-        for r1 in range(self.num_robots):
-            robot1 = observation.robot(r1)
-            pos1 = robot1.position
-            for r2 in range(self.num_robots):
-                robot2 = observation.robot(r2)
-                pos2 = robot2.position
+        # robots_sharing_energy = []
+        # for r1 in range(self.num_robots):
+        #     robot1 = observation.robot(r1)
+        #     pos1 = robot1.position
+        #     for r2 in range(self.num_robots):
+        #         robot2 = observation.robot(r2)
+        #         pos2 = robot2.position
 
-                if pos1[0] == pos2[0]:
-                    if pos2[1] == pos1[1] + 1 or pos2[1] == pos1[1] - 1:
-                        if robot1.energy > robot2.energy and r1 not in robots_sharing_energy:
-                            self.share(r1, r2, observation, action)
-                            robots_sharing_energy.append(r1)
-                        elif robot2.energy > robot1.energy and r2 not in robots_sharing_energy:
-                            self.share(r2, r1, observation, action)
-                            robots_sharing_energy.append(r2)
-                elif pos1[1] == pos2[1]:
-                    if pos2[0] == pos1[0] + 1 or pos2[0] == pos1[0] - 1:
-                        if robot1.energy > robot2.energy and r1 not in robots_sharing_energy:
-                            self.share(r1, r2, observation, action)
-                            robots_sharing_energy.append(r1)
-                        elif robot2.energy > robot1.energy and r2 not in robots_sharing_energy:
-                            self.share(r2, r1, observation, action)
-                            robots_sharing_energy.append(r2)
+        #         if pos1[0] == pos2[0]:
+        #             if pos2[1] == pos1[1] + 1 or pos2[1] == pos1[1] - 1:
+        #                 if robot1.energy > robot2.energy and r1 not in robots_sharing_energy:
+        #                     self.share(r1, r2, observation, action)
+        #                     robots_sharing_energy.append(r1)
+        #                 elif robot2.energy > robot1.energy and r2 not in robots_sharing_energy:
+        #                     self.share(r2, r1, observation, action)
+        #                     robots_sharing_energy.append(r2)
+        #         elif pos1[1] == pos2[1]:
+        #             if pos2[0] == pos1[0] + 1 or pos2[0] == pos1[0] - 1:
+        #                 if robot1.energy > robot2.energy and r1 not in robots_sharing_energy:
+        #                     self.share(r1, r2, observation, action)
+        #                     robots_sharing_energy.append(r1)
+        #                 elif robot2.energy > robot1.energy and r2 not in robots_sharing_energy:
+        #                     self.share(r2, r1, observation, action)
+        #                     robots_sharing_energy.append(r2)
 
 
         # Loop over robots / Choose action

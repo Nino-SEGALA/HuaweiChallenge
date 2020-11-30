@@ -13,7 +13,9 @@ from .simulator import RobotExplorersSimulator, log
 parser = argparse.ArgumentParser(description='Run simulator')
 parser.add_argument('strategy_0', metavar='strategy0', type=str, help='Path to strategy file. Ex: "./basic_strategy.py"')
 parser.add_argument('strategy_1', metavar='strategy1', type=str, help='Path to strategy file. Ex: "./my_strategy.py"')
-parser.add_argument('--timesteps', type=int, default='1', help='Number of timesteps to run')
+parser.add_argument('--python', type=str, default='python', help='Number of timesteps to run')
+parser.add_argument('--timesteps', type=int, default=1, help='Number of timesteps to run')
+parser.add_argument('--seed', type=int, default=11111, help='Random seed (for board generator and random events)')
 parser.add_argument('--visualize', action='store_true', help='Visualize simulation in display window')
 parser.add_argument('--fps', type=int, default='2', help='FPS during visualization')
 parser.add_argument('--headless', action='store_true', help='Save simulation visualizations and debug info to disk')
@@ -72,8 +74,8 @@ if args.visualize or args.headless:
     gui = GUI(max_energy=max_energy, disable_0=args.silent_strategy_0, disable_1=args.silent_strategy_1, disable_print=args.headless)
 
 ## Config
-config_strategy_0 = {'_id': '0', 'cmd': args.strategy_0, 'debug': (args.debug_strategy and not args.silent_strategy_0)}
-config_strategy_1 = {'_id': '1', 'cmd': args.strategy_1, 'debug': (args.debug_strategy and not args.silent_strategy_1)}
+config_strategy_0 = {'_id': '0', 'cmd': args.strategy_0, 'python': args.python, 'debug': (args.debug_strategy and not args.silent_strategy_0)}
+config_strategy_1 = {'_id': '1', 'cmd': args.strategy_1, 'python': args.python, 'debug': (args.debug_strategy and not args.silent_strategy_1)}
 
 graphics_cb = gui.draw if args.visualize or args.headless else None
 # config_board = {
@@ -87,22 +89,22 @@ graphics_cb = gui.draw if args.visualize or args.headless else None
 #     'sigma': 3,
 #     'range_coins_drop': (0, 2),
 #     'shape_coin_drop_box': (3, 3),
-#     'random_seed': 11111,
+#     'random_seed': args.seed,
 #     'graphics_cb': graphics_cb
 # }
 
 config_board = {
     'shape': (20, 25),
-    'num_robots': 3, #1
+    'num_robots': 3,
     'energy': max_energy,
-    'num_hob': 4,
+    'num_hob': 3,
     'wall_density': 0.40,
     'num_coins_start': 35,
     'tau': 30,
     'sigma': 4,
     'range_coins_drop': (1, 4),
     'shape_coin_drop_box': (3, 4),
-    'random_seed': 11111, #1119, #1113, #1117, #11111, #53897
+    'random_seed': args.seed,
     'graphics_cb': graphics_cb
 }
 
