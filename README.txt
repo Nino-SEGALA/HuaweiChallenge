@@ -1,5 +1,7 @@
 Robot explorers simulator.
 
+![HuaweiChallenge](https://user-images.githubusercontent.com/44979794/125480252-ebb1e64f-708a-4dd6-b36b-f437b7bcf728.PNG)
+
 Copyright (c) 2020 Huawei Technologies Sweden AB, All rights reserved.
 By running, modifying or otherwise using the source code and resources in this project 
 you accept and agree with the license. See "LICENSE.txt" for further details.
